@@ -173,116 +173,236 @@ const OfftakeForm = () => {
   };
 
   // ------------------ RENDER ------------------
-  return (
-    <SafeAreaView style={[styles.container, theme === "dark" && styles.containerDark]}>
-      <AppHeader />
+return (
+  <SafeAreaView style={[styles.container, theme === "dark" && styles.containerDark]}>
+    <AppHeader />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={10}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
-            <Text style={[styles.title, theme === "dark" && styles.titleDark]}>
-              📝 Offtake Form
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={10}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          style={styles.form}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 40 }}
+        >
+          <Text style={[styles.title, theme === "dark" && styles.titleDark]}>
+            📝 Offtake Form
+          </Text>
+
+          {/* Farmer's Name */}
+          <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
+            Farmer's Name
+          </Text>
+          <TextInput
+            style={[styles.input, theme === "dark" && styles.inputDark]}
+            placeholder="Enter full name"
+            placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
+            value={name}
+            onChangeText={setName}
+          />
+
+          {/* Gender */}
+          <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
+            Gender
+          </Text>
+          <Picker
+            selectedValue={gender}
+            onValueChange={(val) => setGender(val)}
+            style={[styles.picker, theme === "dark" && styles.pickerDark]}
+          >
+            <Picker.Item label="Male" value="male" />
+            <Picker.Item label="Female" value="female" />
+          </Picker>
+
+          {/* ID Number */}
+          <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
+            ID Number
+          </Text>
+          <TextInput
+            style={[styles.input, theme === "dark" && styles.inputDark]}
+            placeholder="Enter ID number"
+            placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
+            keyboardType="numeric"
+            value={idNumber}
+            onChangeText={(text) => setIdNumber(text.replace(/[^0-9]/g, ""))}
+          />
+
+          {/* Phone Number */}
+          <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
+            Phone Number
+          </Text>
+          <TextInput
+            style={[styles.input, theme === "dark" && styles.inputDark]}
+            placeholder="Enter phone number"
+            placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
+            keyboardType="numeric"
+            maxLength={11}
+            value={phone}
+            onChangeText={(text) => setPhone(text.replace(/[^0-9]/g, ""))}
+          />
+
+          {/* Date */}
+          <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
+            Date
+          </Text>
+          <TouchableOpacity
+            style={[styles.input, theme === "dark" && styles.inputDark]}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={{ color: theme === "dark" ? "#f9fafb" : "#111827" }}>
+              {formatDate(date)}
             </Text>
-
-            <Text style={styles.label}>Farmer's Name</Text>
-            <TextInput style={styles.input} placeholder="Enter full name" value={name} onChangeText={setName} />
-
-            <Text style={styles.label}>Gender</Text>
-            <Picker selectedValue={gender} onValueChange={(val) => setGender(val)} style={styles.picker}>
-              <Picker.Item label="Male" value="male" />
-              <Picker.Item label="Female" value="female" />
-            </Picker>
-
-            <Text style={styles.label}>ID Number</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter ID number"
-              keyboardType="numeric"
-              value={idNumber}
-              onChangeText={(text) => setIdNumber(text.replace(/[^0-9]/g, ""))}
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="default"
+              onChange={(event, selectedDate) => {
+                setShowDatePicker(false);
+                if (selectedDate) setDate(selectedDate);
+              }}
             />
+          )}
 
-            <Text style={styles.label}>Phone Number</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter phone number"
-              keyboardType="numeric"
-              maxLength={11}
-              value={phone}
-              onChangeText={(text) => setPhone(text.replace(/[^0-9]/g, ""))}
-            />
-
-            <Text style={styles.label}>Date</Text>
-            <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-              <Text>{formatDate(date)}</Text>
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={date}
-                mode="date"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowDatePicker(false);
-                  if (selectedDate) setDate(selectedDate);
-                }}
+          {/* Weights */}
+          <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
+            Goat Weights
+          </Text>
+          {weights.map((w, idx) => (
+            <View key={idx} style={styles.weightRow}>
+              <TextInput
+                style={[styles.input, theme === "dark" && styles.inputDark, { flex: 1 }]}
+                placeholder="Live Weight (kg)"
+                placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
+                keyboardType="numeric"
+                value={w.live}
+                onChangeText={(val) => updateWeight(idx, val)}
               />
+              <TextInput
+                style={[styles.input, theme === "dark" && styles.inputDark, { flex: 1 }]}
+                placeholder="Carcass (kg)"
+                placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
+                value={w.carcass}
+                editable={false}
+              />
+              <TextInput
+                style={[styles.input, theme === "dark" && styles.inputDark, { flex: 1 }]}
+                placeholder="Price (KES)"
+                placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
+                value={w.price}
+                editable={false}
+              />
+            </View>
+          ))}
+
+          <TouchableOpacity style={styles.addBtn} onPress={addWeight}>
+            <Text style={styles.addBtnText}>+ Add Goat</Text>
+          </TouchableOpacity>
+
+          {/* Totals */}
+          <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
+            Total Goats: {weights.filter((w) => w.price).length}
+          </Text>
+          <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
+            Total Price: KES {totalPrice}
+          </Text>
+
+          {/* Submit */}
+          <TouchableOpacity
+            style={[styles.submitButton, submitting && { backgroundColor: "#6b7280" }]}
+            onPress={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitText}>Submit</Text>
             )}
+          </TouchableOpacity>
 
-            <Text style={styles.label}>Goat Weights</Text>
-            {weights.map((w, idx) => (
-              <View key={idx} style={styles.weightRow}>
-                <TextInput
-                  style={[styles.input, { flex: 1 }]}
-                  placeholder="Live Weight (kg)"
-                  keyboardType="numeric"
-                  value={w.live}
-                  onChangeText={(val) => updateWeight(idx, val)}
-                />
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Carcass (kg)" value={w.carcass} editable={false} />
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Price (KES)" value={w.price} editable={false} />
-              </View>
-            ))}
+          {/* Spacer for bottom padding */}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+  </SafeAreaView>
+);
 
-            <TouchableOpacity style={styles.addBtn} onPress={addWeight}>
-              <Text style={styles.addBtnText}>+ Add Goat</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.label}>Total Goats: {weights.filter((w) => w.price).length}</Text>
-            <Text style={styles.label}>Total Price: KES {totalPrice}</Text>
-
-            <TouchableOpacity
-              style={[styles.submitButton, submitting && { backgroundColor: "#6b7280" }]}
-              onPress={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit</Text>}
-            </TouchableOpacity>
-          </ScrollView>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
 };
 
 // ------------------ STYLES ------------------
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f9fafb" },
   containerDark: { backgroundColor: "#111827" },
+
   form: { flex: 1, padding: 16 },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 16, color: "#000" },
-  titleDark: { color: "#fff" },
+
+  title: { fontSize: 22, fontWeight: "bold", marginBottom: 16, color: "#111827" },
+  titleDark: { color: "#f9fafb" },
+
   label: { fontSize: 14, fontWeight: "500", marginBottom: 4, color: "#374151" },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, marginBottom: 12, backgroundColor: "#fff" },
-  picker: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, marginBottom: 16, backgroundColor: "#fff" },
-  weightRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12, gap: 8 },
-  addBtn: { backgroundColor: "#1f8b2c", padding: 12, borderRadius: 8, alignItems: "center", marginBottom: 16 },
+  labelDark: { color: "#d1d5db" },
+
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    backgroundColor: "#fff",
+    color: "#000",
+  },
+  inputDark: {
+    backgroundColor: "#1f2937", 
+    borderColor: "#374151",
+    color: "#f9fafb",
+  },
+
+  picker: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    marginBottom: 16,
+    backgroundColor: "#fff",
+    color: "#000",
+  },
+  pickerDark: {
+    backgroundColor: "#1f2937",
+    borderColor: "#374151",
+    color: "#f9fafb",
+  },
+
+  weightRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    gap: 8,
+  },
+
+  addBtn: {
+    backgroundColor: "#1f8b2c",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 16,
+  },
   addBtnText: { color: "#fff", fontWeight: "600" },
-  submitButton: { backgroundColor: "#1f8b2c", paddingVertical: 14, borderRadius: 10, alignItems: "center", marginTop: 20 },
+
+  submitButton: {
+    backgroundColor: "#1f8b2c",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
   submitText: { color: "#fff", fontWeight: "700", fontSize: 18 },
+
+  scene: { flex: 1, padding: 10, paddingBottom: 40 },
 });
+
 
 export default OfftakeForm;

@@ -3,35 +3,49 @@ import {
   SafeAreaView,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   View,
+  Dimensions,
 } from "react-native";
 import AppHeader from "../components/AppHeader";
 import { useAppTheme } from "../contexts/ThemeContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
-import { TabView, SceneMap, TabBar } from "react-native-tab-view";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { PieChart } from "react-native-chart-kit";
 
 export default function Reports() {
   const { theme } = useAppTheme();
   const [farmers, setFarmers] = useState([]);
   const [offtakes, setOfftakes] = useState([]);
 
-  const [index, setIndex] = useState(0);
-  const [routes] = useState([
-    { key: "farmers", title: "Farmers" },
-    { key: "offtakes", title: "Offtakes" },
-  ]);
-
   useFocusEffect(
     useCallback(() => {
       const loadData = async () => {
         try {
+          // Fetch Farmers
           const storedFarmers = await AsyncStorage.getItem("farmers");
-          setFarmers(storedFarmers ? JSON.parse(storedFarmers) : []);
+          const farmersData = storedFarmers ? JSON.parse(storedFarmers) : [];
 
+          // Fetch Offtakes
           const storedOfftakes = await AsyncStorage.getItem("offtakes");
-          setOfftakes(storedOfftakes ? JSON.parse(storedOfftakes) : []);
+          const offtakesData = storedOfftakes ? JSON.parse(storedOfftakes) : [];
+
+          setFarmers(farmersData);
+          setOfftakes(offtakesData);
+
+          // 🔥 Derive farmers from offtakes if missing
+          if (farmersData.length === 0 && offtakesData.length > 0) {
+            const derivedFarmers = offtakesData.map((o) => ({
+              name: o.name,
+              gender: o.gender,
+              idNumber: o.idNumber,
+              phone: o.phone,
+              county: o.county,
+              registrationDate: o.date,
+            }));
+            setFarmers(derivedFarmers);
+          }
         } catch (e) {
           console.log("Failed to load data:", e);
         }
@@ -40,215 +54,153 @@ export default function Reports() {
     }, [])
   );
 
-  const FarmersRoute = () => {
-    if (farmers.length === 0) {
-      return (
-        <View style={[styles.scene, theme === "dark" && styles.containerDark]}>
-          <Text style={[styles.empty, theme === "dark" && styles.emptyDark]}>
-            No farmers saved yet.
-          </Text>
-        </View>
-      );
-    }
+  // ================== COMPUTE STATS ==================
+  const totalFarmers = farmers.length;
+  const maleCount = farmers.filter((f) => f.gender === "male").length;
+  const femaleCount = farmers.filter((f) => f.gender === "female").length;
 
-    const totalFarmers = farmers.length;
-    const maleCount = farmers.filter((f) => f.gender === "male").length;
-    const femaleCount = farmers.filter((f) => f.gender === "female").length;
+  // Performance per Location
+  const locationMap = {};
+  farmers.forEach((f) => {
+    const loc = f.county || "Unknown";
+    if (!locationMap[loc]) locationMap[loc] = 0;
+    locationMap[loc] += 1;
+  });
+  const locationStats = Object.keys(locationMap).map((loc) => ({
+    location: loc,
+    entries: locationMap[loc],
+    percentage: ((locationMap[loc] / totalFarmers) * 100).toFixed(1),
+  }));
 
-    const countyMap = {};
-    farmers.forEach((f) => {
-      const county = f.county || "Unknown";
-      if (!countyMap[county]) countyMap[county] = 0;
-      countyMap[county] += 1;
-    });
+  // Offtakes Revenue per Location
+  let totalRevenue = 0;
+  const revenueMap = {};
+  offtakes.forEach((o) => {
+    const loc = o.county || "Unknown";
+    const price = o.totalPrice || 0;
+    totalRevenue += price;
+    if (!revenueMap[loc]) revenueMap[loc] = 0;
+    revenueMap[loc] += price;
+  });
+  const revenueStats = Object.keys(revenueMap).map((loc) => ({
+    location: loc,
+    amount: revenueMap[loc],
+    percentage: ((revenueMap[loc] / totalRevenue) * 100).toFixed(1),
+  }));
 
-    const countyStats = Object.keys(countyMap).map((county) => ({
-      county,
-      count: countyMap[county],
-      percentage: ((countyMap[county] / totalFarmers) * 100).toFixed(1),
-    }));
+  // Pie Chart Data
+  const genderData = [
+    {
+      name: "Male",
+      population: maleCount,
+      color: "#64C2A6",
+      legendFontColor: theme === "dark" ? "#e5e7eb" : "#111827",
+      legendFontSize: 14,
+    },
+    {
+      name: "Female",
+      population: femaleCount,
+      color: "#16a34a",
+      legendFontColor: theme === "dark" ? "#e5e7eb" : "#111827",
+      legendFontSize: 14,
+    },
+  ];
 
-    return (
-      <View style={[styles.scene, theme === "dark" && styles.containerDark]}>
-        <Text style={[styles.reportHeader, theme === "dark" && styles.itemDark]}>
-          Total Farmers: {totalFarmers} (Male: {maleCount}, Female: {femaleCount})
-        </Text>
-
-        {countyStats.map((c, idx) => (
-          <View
-            key={idx}
-            style={[styles.card, theme === "dark" && styles.cardDark]}
-          >
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              County: {c.county}
-            </Text>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              Entries: {c.count} ({c.percentage}%)
-            </Text>
-          </View>
-        ))}
-
-        <FlatList
-          data={farmers}
-          keyExtractor={(item, index) => "farmer-" + index}
-          renderItem={({ item }) => (
-            <View style={[styles.card, theme === "dark" && styles.cardDark]}>
-              <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-                Name: {item.name}
-              </Text>
-              <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-                Gender: {item.gender}
-              </Text>
-              <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-                ID: {item.idNumber}
-              </Text>
-              <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-                Phone: {item.phone}
-              </Text>
-              <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-                County: {item.county}
-              </Text>
-              <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-                Registered: {item.registrationDate}
-              </Text>
-            </View>
-          )}
-        />
-      </View>
-    );
-  };
-
-  const OfftakesRoute = () => {
-    if (offtakes.length === 0) {
-      return (
-        <View style={[styles.scene, theme === "dark" && styles.containerDark]}>
-          <Text style={[styles.empty, theme === "dark" && styles.emptyDark]}>
-            No offtakes saved yet.
-          </Text>
-        </View>
-      );
-    }
-
-    const totalFarmers = offtakes.length;
-    const maleCount = offtakes.filter((o) => o.gender === "male").length;
-    const femaleCount = offtakes.filter((o) => o.gender === "female").length;
-
-    const countyMap = {};
-    let totalAmount = 0;
-
-    offtakes.forEach((o) => {
-      const county = o.county || "Unknown";
-      const price = o.totalPrice || 0;
-      totalAmount += price;
-
-      if (!countyMap[county]) countyMap[county] = { count: 0, amount: 0 };
-      countyMap[county].count += 1;
-      countyMap[county].amount += price;
-    });
-
-    const countyStats = Object.keys(countyMap).map((county) => ({
-      county,
-      entries: countyMap[county].count,
-      percentage: ((countyMap[county].count / totalFarmers) * 100).toFixed(1),
-      amount: countyMap[county].amount,
-    }));
-
-    return (
-      <View style={[styles.scene, theme === "dark" && styles.containerDark]}>
-        <View style={[styles.reportCard, theme === "dark" && styles.reportCardDark]}>
-          <View style={styles.reportRow}>
-            <Text style={[styles.reportLabel, theme === "dark" && styles.labelDark]}>
-              Total Farmers:
-            </Text>
-            <Text style={[styles.reportValue, theme === "dark" && styles.valueDark]}>
-              {totalFarmers} (Male: {maleCount}, Female: {femaleCount})
-            </Text>
-          </View>
-          <View style={styles.reportRow}>
-            <Text style={[styles.reportLabel, theme === "dark" && styles.labelDark]}>
-              Total Amount:
-            </Text>
-            <Text style={[styles.reportValue, theme === "dark" && styles.valueDark]}>
-              KES {totalAmount.toLocaleString()}
-            </Text>
-          </View>
-        </View>
-
-
-        {countyStats.map((c, idx) => (
-          <View
-            key={idx}
-            style={[styles.card, theme === "dark" && styles.cardDark]}
-          >
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              County: {c.county}
-            </Text>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              Entries: {c.entries} ({c.percentage}%)
-            </Text>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              Beneficiaries Amount: KES {c.amount.toLocaleString()}
-            </Text>
-          </View>
-        ))}
-
-        <FlatList
-          data={offtakes}
-          keyExtractor={(item, index) => "offtake-" + index}
-          renderItem={({ item }) => (
-           <View style={[styles.card, theme === "dark" && styles.cardDark]}>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              Name: {item.name}
-            </Text>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              Gender: {item.gender}
-            </Text>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              ID: {item.idNumber}
-            </Text>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              Phone: {item.phone}
-            </Text>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              County: {item.county}
-            </Text>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              Date: {item.date}
-            </Text>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              Goats: {item.goats?.length || 0}
-            </Text>
-            <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-              Total Price: KES {item.totalPrice?.toLocaleString() || 0}
-            </Text>
-          </View>
-          )}
-        />
-      </View>
-    );
-  };
-
+  // ================== UI ==================
   return (
-    <SafeAreaView style={[styles.container, theme === "dark" && styles.containerDark]}>
+    <SafeAreaView
+      style={[styles.container, theme === "dark" && styles.containerDark]}
+    >
       <AppHeader />
-      <TabView
-        navigationState={{ index, routes }}
-        renderScene={SceneMap({
-          farmers: FarmersRoute,
-          offtakes: OfftakesRoute,
-        })}
-        onIndexChange={setIndex}
-        initialLayout={{ width: 400 }}
-        renderTabBar={(props) => (
-          <TabBar
-            {...props}
-            indicatorStyle={{ backgroundColor: "#16a34a" }}
-            style={{ backgroundColor: theme === "dark" ? "#111827" : "#fff" }}
-            activeColor={theme === "dark" ? "#16a34a" : "#16a34a"}
-            inactiveColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
+      <ScrollView style={styles.scene}>
+        {/* Total Farmers */}
+        <View style={[styles.card, theme === "dark" && styles.cardDark]}>
+          <Icon name="account-group" size={28} color="#16a34a" />
+          <Text
+            style={[
+              styles.title,
+              theme === "dark" && { color: "#e5e7eb" },
+            ]}
+          >
+            Total Farmers: {totalFarmers}
+          </Text>
+        </View>
+
+        {/* Performance per Location */}
+        <View style={[styles.card, theme === "dark" && styles.cardDark]}>
+          <Icon name="map-marker" size={28} color="#f59e0b" />
+          <Text
+            style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}
+          >
+            Performance per County
+          </Text>
+          {locationStats.map((loc, idx) => (
+            <Text
+              key={idx}
+              style={[styles.subText, theme === "dark" && { color: "#d1d5db" }]}
+            >
+              {loc.location}: {loc.entries} Farmers ({loc.percentage}%)
+            </Text>
+          ))}
+        </View>
+
+        {/* Pie Chart Gender */}
+        <View style={[styles.card, theme === "dark" && styles.cardDark]}>
+          <Text
+            style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}
+          >
+            Gender Distribution
+          </Text>
+          <PieChart
+            data={genderData}
+            width={Dimensions.get("window").width - 40}
+            height={220}
+            chartConfig={{
+              backgroundColor: theme === "dark" ? "#111827" : "#fff",
+              backgroundGradientFrom: theme === "dark" ? "#1f2937" : "#fff",
+              backgroundGradientTo: theme === "dark" ? "#111827" : "#fff",
+              decimalPlaces: 1,
+              color: (opacity = 1) =>
+                theme === "dark"
+                  ? `rgba(255, 255, 255, ${opacity})`
+                  : `rgba(0, 0, 0, ${opacity})`,
+            }}
+            accessor="population"
+            backgroundColor="transparent"
+            paddingLeft="15"
+            absolute
           />
-        )}
-      />
+        </View>
+
+        {/* Total Revenue */}
+        <View style={[styles.card, theme === "dark" && styles.cardDark]}>
+          <Icon name="currency-usd" size={28} color="#10b981" />
+          <Text
+            style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}
+          >
+            Total Revenue: KES {totalRevenue.toLocaleString()}
+          </Text>
+        </View>
+
+        {/* Beneficiaries per Location */}
+        <View style={[styles.card, theme === "dark" && styles.cardDark]}>
+          <Icon name="city" size={28} color="#3b82f6" />
+          <Text
+            style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}
+          >
+            Beneficiaries per County
+          </Text>
+          {revenueStats.map((r, idx) => (
+            <Text
+              key={idx}
+              style={[styles.subText, theme === "dark" && { color: "#d1d5db" }]}
+            >
+              {r.location}: KES {r.amount.toLocaleString()} ({r.percentage}%)
+            </Text>
+          ))}
+        </View>
+        <View style={{ height: 40 }} /> 
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -257,8 +209,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f9fafb" },
   containerDark: { backgroundColor: "#111827" },
   scene: { flex: 1, padding: 10 },
-  empty: { textAlign: "center", marginTop: 10, marginBottom: 10, color: "#6b7280" },
-  emptyDark: { color: "#9ca3af" },
   card: {
     backgroundColor: "#fff",
     marginHorizontal: 12,
@@ -268,40 +218,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardDark: { backgroundColor: "#1f2937" },
-  item: { fontSize: 14, color: "#111827" },
-  itemDark: { color: "#e5e7eb" },
-  reportHeader: { fontSize: 16, fontWeight: "bold", marginVertical: 6 },
-  reportCard: {
-  backgroundColor: "#fff",
-  padding: 16,
-  borderRadius: 12,
-  marginVertical: 10,
-  marginHorizontal: 12,
-  elevation: 3,
-},
-reportCardDark: {
-  backgroundColor: "#1f2937",
-},
-reportRow: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  marginBottom: 8,
-},
-reportLabel: {
-  fontSize: 16,
-  fontWeight: "600",
-  color: "#374151",
-},
-reportValue: {
-  fontSize: 16,
-  fontWeight: "700",
-  color: "#111827",
-},
-labelDark: {
-  color: "#9ca3af",
-},
-valueDark: {
-  color: "#e5e7eb",
-},
+  title: { fontSize: 16, fontWeight: "700", marginTop: 8, color: "#111827" },
+  subText: { fontSize: 14, color: "#374151" },
+  scene: { flex: 1, padding: 10, paddingBottom: 40,},
 
 });
