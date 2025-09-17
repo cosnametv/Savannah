@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -29,7 +29,8 @@ const OfftakeForm = () => {
   const { theme } = useAppTheme();
 
   const [name, setName] = useState("");
-  const [gender, setGender] = useState("male");
+  const [location, setLocation] = useState("");
+  const [gender, setGender] = useState("Select Gender");
   const [idNumber, setIdNumber] = useState("");
   const [phone, setPhone] = useState("");
   const [date, setDate] = useState(new Date());
@@ -65,8 +66,17 @@ const OfftakeForm = () => {
     return 7000;
   };
 
-  const addWeight = () => setWeights([...weights, { live: "", carcass: "", price: "" }]);
+  const weightRefs = useRef([]);
 
+  const addWeight = () => {
+    setWeights((prev) => [...prev, { live: "", carcass: "", price: "" }]);
+    setTimeout(() => {
+      const lastIndex = weightRefs.current.length - 1;
+      if (weightRefs.current[lastIndex]) {
+        weightRefs.current[lastIndex].focus();
+      }
+    }, 100);
+  };
   const updateWeight = (index, liveVal) => {
     let updated = [...weights];
     let live = parseFloat(liveVal);
@@ -84,18 +94,27 @@ const OfftakeForm = () => {
   };
 
   // ------------------ SUBMIT ------------------
+
   const handleSubmit = async () => {
     if (submitting) return;
     setSubmitting(true);
 
-    if (!name.trim() || !idNumber.trim() || !phone.trim()) {
+    if (!name.trim() || 
+    !idNumber.trim() || 
+    !location.trim() ||
+    !phone.trim()) {
       Alert.alert("⚠️ Missing Fields", "Please fill in all required fields.");
       setSubmitting(false);
       return;
     }
 
-    if (phone.length !== 10 && phone.length !== 11) {
-      Alert.alert("⚠️ Invalid Phone", "Phone number must be 10 or 11 digits.");
+    if (phone.length !== 10) {
+      Alert.alert("⚠️ Invalid Phone", "Phone number must be 10 digits.");
+      setSubmitting(false);
+      return;
+    }
+    if (gender === null) {
+      Alert.alert("⚠️ Missing Gender", "Please select gender before continuing.");
       setSubmitting(false);
       return;
     }
@@ -116,6 +135,7 @@ const OfftakeForm = () => {
 
       const offtakeData = {
         name,
+        location,
         gender,
         idNumber,
         phone,
@@ -157,7 +177,7 @@ const OfftakeForm = () => {
 
       // Reset
       setName("");
-      setGender("male");
+      setGender("");
       setIdNumber("");
       setPhone("");
       setDate(new Date());
@@ -191,17 +211,31 @@ return (
           <Text style={[styles.title, theme === "dark" && styles.titleDark]}>
             📝 Offtake Form
           </Text>
-
+          {/* Location's Name */}
+          <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
+            Location
+          </Text>
+          <TextInput
+            style={[styles.input, theme === "dark" && styles.inputDark]}
+            placeholder="Enter Location"
+            placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
+            value={location}
+            onChangeText={setLocation}
+          />
           {/* Farmer's Name */}
           <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
-            Farmer's Name
+            Full Name
           </Text>
           <TextInput
             style={[styles.input, theme === "dark" && styles.inputDark]}
             placeholder="Enter full name"
             placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
             value={name}
-            onChangeText={setName}
+            onChangeText={(text) => {
+              // Replace multiple spaces with a single space
+              const cleanText = text.replace(/\s+/g, " ");
+              setName(cleanText);
+            }}
           />
 
           {/* Gender */}
@@ -213,6 +247,7 @@ return (
             onValueChange={(val) => setGender(val)}
             style={[styles.picker, theme === "dark" && styles.pickerDark]}
           >
+            <Picker.Item label="Select Gender" value={null} enabled={false}/> 
             <Picker.Item label="Male" value="male" />
             <Picker.Item label="Female" value="female" />
           </Picker>
@@ -225,9 +260,10 @@ return (
             style={[styles.input, theme === "dark" && styles.inputDark]}
             placeholder="Enter ID number"
             placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
-            keyboardType="numeric"
             value={idNumber}
-            onChangeText={(text) => setIdNumber(text.replace(/[^0-9]/g, ""))}
+            onChangeText={setIdNumber} 
+            autoCapitalize="characters" 
+            keyboardType="default" 
           />
 
           {/* Phone Number */}
@@ -238,11 +274,13 @@ return (
             style={[styles.input, theme === "dark" && styles.inputDark]}
             placeholder="Enter phone number"
             placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
-            keyboardType="numeric"
-            maxLength={11}
+            maxLength={10}
             value={phone}
-            onChangeText={(text) => setPhone(text.replace(/[^0-9]/g, ""))}
+            autoCapitalize="characters"
+            onChangeText={setPhone}
+            keyboardType="default" 
           />
+
 
           {/* Date */}
           <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
@@ -275,6 +313,7 @@ return (
           {weights.map((w, idx) => (
             <View key={idx} style={styles.weightRow}>
               <TextInput
+                ref={(el) => (weightRefs.current[idx] = el)}
                 style={[styles.input, theme === "dark" && styles.inputDark, { flex: 1 }]}
                 placeholder="Live Weight (kg)"
                 placeholderTextColor={theme === "dark" ? "#9ca3af" : "#6b7280"}
@@ -298,6 +337,7 @@ return (
               />
             </View>
           ))}
+
 
           <TouchableOpacity style={styles.addBtn} onPress={addWeight}>
             <Text style={styles.addBtnText}>+ Add Goat</Text>

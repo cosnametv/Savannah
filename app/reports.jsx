@@ -6,6 +6,7 @@ import {
   ScrollView,
   View,
   Dimensions,
+  Button,
 } from "react-native";
 import AppHeader from "../components/AppHeader";
 import { useAppTheme } from "../contexts/ThemeContext";
@@ -13,39 +14,31 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { PieChart } from "react-native-chart-kit";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 export default function Reports() {
   const { theme } = useAppTheme();
   const [farmers, setFarmers] = useState([]);
   const [offtakes, setOfftakes] = useState([]);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
+  // ================== LOAD DATA ==================
   useFocusEffect(
     useCallback(() => {
       const loadData = async () => {
         try {
-          // Fetch Farmers
+          // Load farmers
           const storedFarmers = await AsyncStorage.getItem("farmers");
           const farmersData = storedFarmers ? JSON.parse(storedFarmers) : [];
+          setFarmers(farmersData);
 
-          // Fetch Offtakes
+          // Load offtakes
           const storedOfftakes = await AsyncStorage.getItem("offtakes");
           const offtakesData = storedOfftakes ? JSON.parse(storedOfftakes) : [];
-
-          setFarmers(farmersData);
           setOfftakes(offtakesData);
-
-          // 🔥 Derive farmers from offtakes if missing
-          if (farmersData.length === 0 && offtakesData.length > 0) {
-            const derivedFarmers = offtakesData.map((o) => ({
-              name: o.name,
-              gender: o.gender,
-              idNumber: o.idNumber,
-              phone: o.phone,
-              county: o.county,
-              registrationDate: o.date,
-            }));
-            setFarmers(derivedFarmers);
-          }
         } catch (e) {
           console.log("Failed to load data:", e);
         }
@@ -54,28 +47,58 @@ export default function Reports() {
     }, [])
   );
 
-  // ================== COMPUTE STATS ==================
-  const totalFarmers = farmers.length;
-  const maleCount = farmers.filter((f) => f.gender === "male").length;
-  const femaleCount = farmers.filter((f) => f.gender === "female").length;
+  // ================== PARSE "DD MMM YYYY" STRING ==================
+  const parseDate = (str) => {
+    const [day, monthStr, year] = str.split(" ");
+    const monthNames = {
+      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+      Jul: 6, Aug: 7, Sept: 8, Oct: 9, Nov: 10, Dec: 11
+    };
+    return new Date(year, monthNames[monthStr], day);
+  };
+
+  const displayDate = (date) => {
+    if (!date) return "";
+    return new Date(date).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  // ================== FILTER BY DATE ==================
+  const filteredFarmers = farmers.filter((f) => {
+    const regDate = parseDate(f.registrationDate);
+    return (!startDate || regDate >= startDate) && (!endDate || regDate <= endDate);
+  });
+  const totalFarmers = filteredFarmers.length;
+
+  const filteredOfftakes = offtakes.filter((o) => {
+    const oDate = parseDate(o.date);
+    return (!startDate || oDate >= startDate) && (!endDate || oDate <= endDate);
+  });
+
+  // ================== COMPUTE STATS FROM OFFTAKES ==================
+  const maleCount = filteredOfftakes.filter((o) => o.gender === "male").length;
+  const femaleCount = filteredOfftakes.filter((o) => o.gender === "female").length;
 
   // Performance per Location
   const locationMap = {};
-  farmers.forEach((f) => {
-    const loc = f.county || "Unknown";
+  filteredOfftakes.forEach((o) => {
+    const loc = o.county || "Unknown";
     if (!locationMap[loc]) locationMap[loc] = 0;
     locationMap[loc] += 1;
   });
   const locationStats = Object.keys(locationMap).map((loc) => ({
     location: loc,
     entries: locationMap[loc],
-    percentage: ((locationMap[loc] / totalFarmers) * 100).toFixed(1),
+    percentage: ((locationMap[loc] / filteredOfftakes.length) * 100).toFixed(1),
   }));
 
   // Offtakes Revenue per Location
   let totalRevenue = 0;
   const revenueMap = {};
-  offtakes.forEach((o) => {
+  filteredOfftakes.forEach((o) => {
     const loc = o.county || "Unknown";
     const price = o.totalPrice || 0;
     totalRevenue += price;
@@ -106,49 +129,98 @@ export default function Reports() {
     },
   ];
 
-  // ================== UI ==================
   return (
-    <SafeAreaView
-      style={[styles.container, theme === "dark" && styles.containerDark]}
-    >
+    <SafeAreaView style={[styles.container, theme === "dark" && styles.containerDark]}>
       <AppHeader />
       <ScrollView style={styles.scene}>
-        {/* Total Farmers */}
+        {/* ================== DATE PICKERS ================== */}
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
-          <Icon name="account-group" size={28} color="#16a34a" />
-          <Text
+          <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
+            Filter by Date
+          </Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
+            <Button
+              title={startDate ? displayDate(startDate) : "Start Date"}
+              onPress={() => setShowStartPicker(true)}
+            />
+            <Button
+              title={endDate ? displayDate(endDate) : "End Date"}
+              onPress={() => setShowEndPicker(true)}
+            />
+          </View>
+          {showStartPicker && (
+            <DateTimePicker
+              value={startDate || new Date()}
+              mode="date"
+              display="default"
+              maximumDate={new Date()}
+              onChange={(event, date) => {
+                setShowStartPicker(false);
+                if (date) setStartDate(date);
+              }}
+            />
+          )}
+          {showEndPicker && (
+            <DateTimePicker
+              value={endDate || new Date()}
+              mode="date"
+              display="default"
+              maximumDate={new Date()}
+              onChange={(event, date) => {
+                setShowEndPicker(false);
+                if (date) setEndDate(date);
+              }}
+            />
+          )}
+        </View>
+
+        {/* ================== Offtakes & Farmers Side by Side ================== */}
+        <View style={{ flexDirection: "row", marginHorizontal: 12, marginVertical: 6 }}>
+          {/* Offtakes */}
+          <View
             style={[
-              styles.title,
-              theme === "dark" && { color: "#e5e7eb" },
+              styles.card,
+              { flex: 1, marginRight: 6 },
+              theme === "dark" && styles.cardDark,
             ]}
           >
-            Total Farmers: {totalFarmers}
-          </Text>
+            <Icon name="cart" size={28} color="#f59e0b" />
+            <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
+              Total Offtakes: {filteredOfftakes.length}
+            </Text>
+          </View>
+
+          {/* Farmers */}
+          <View
+            style={[
+              styles.card,
+              { flex: 1, marginLeft: 6 },
+              theme === "dark" && styles.cardDark,
+            ]}
+          >
+            <Icon name="account-group" size={28} color="#16a34a" />
+            <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
+              Farmers Reg: {totalFarmers}
+            </Text>
+          </View>
         </View>
 
         {/* Performance per Location */}
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
           <Icon name="map-marker" size={28} color="#f59e0b" />
-          <Text
-            style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}
-          >
+          <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
             Performance per County
           </Text>
           {locationStats.map((loc, idx) => (
-            <Text
-              key={idx}
-              style={[styles.subText, theme === "dark" && { color: "#d1d5db" }]}
-            >
-              {loc.location}: {loc.entries} Farmers ({loc.percentage}%)
+            <Text key={idx} style={[styles.subText, theme === "dark" && { color: "#d1d5db" }]}>
+              {loc.location}: {loc.entries} Offtakes ({loc.percentage}%)
             </Text>
           ))}
         </View>
 
         {/* Pie Chart Gender */}
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
-          <Text
-            style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}
-          >
+          <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
             Gender Distribution
           </Text>
           <PieChart
@@ -175,9 +247,7 @@ export default function Reports() {
         {/* Total Revenue */}
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
           <Icon name="currency-usd" size={28} color="#10b981" />
-          <Text
-            style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}
-          >
+          <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
             Total Revenue: KES {totalRevenue.toLocaleString()}
           </Text>
         </View>
@@ -185,21 +255,17 @@ export default function Reports() {
         {/* Beneficiaries per Location */}
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
           <Icon name="city" size={28} color="#3b82f6" />
-          <Text
-            style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}
-          >
+          <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
             Beneficiaries per County
           </Text>
           {revenueStats.map((r, idx) => (
-            <Text
-              key={idx}
-              style={[styles.subText, theme === "dark" && { color: "#d1d5db" }]}
-            >
+            <Text key={idx} style={[styles.subText, theme === "dark" && { color: "#d1d5db" }]}>
               {r.location}: KES {r.amount.toLocaleString()} ({r.percentage}%)
             </Text>
           ))}
         </View>
-        <View style={{ height: 40 }} /> 
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -208,10 +274,10 @@ export default function Reports() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f9fafb" },
   containerDark: { backgroundColor: "#111827" },
-  scene: { flex: 1, padding: 10 },
+  scene: { flex: 1, padding: 10, paddingBottom: 40 },
   card: {
     backgroundColor: "#fff",
-    marginHorizontal: 12,
+    marginHorizontal: 0,
     marginVertical: 6,
     padding: 12,
     borderRadius: 8,
@@ -220,6 +286,4 @@ const styles = StyleSheet.create({
   cardDark: { backgroundColor: "#1f2937" },
   title: { fontSize: 16, fontWeight: "700", marginTop: 8, color: "#111827" },
   subText: { fontSize: 14, color: "#374151" },
-  scene: { flex: 1, padding: 10, paddingBottom: 40,},
-
 });

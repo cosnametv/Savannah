@@ -4,9 +4,10 @@ import { DrawerContentScrollView, DrawerItemList, DrawerItem, useDrawerStatus } 
 import { useRouter } from 'expo-router'
 import { useAppTheme } from '../contexts/ThemeContext'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import { auth } from '../Config/firebaseConfig'
+import { auth, db } from '../Config/firebaseConfig'
 import { onAuthStateChanged } from 'firebase/auth'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { collection, query, where, getDocs } from 'firebase/firestore'
 
 export default function CustomDrawerContent(props) {
   const router = useRouter()
@@ -16,7 +17,8 @@ export default function CustomDrawerContent(props) {
   const [userEmail, setUserEmail] = useState(() => auth.currentUser?.email || '')
   const [selectedCounty, setSelectedCounty] = useState(null)
 
-  const drawerStatus = useDrawerStatus() // 👈 tells if drawer is open/closed
+  const drawerStatus = useDrawerStatus() 
+  const [username, setUsername] = useState(null)
 
   // Listen for auth changes
   useEffect(() => {
@@ -42,49 +44,115 @@ export default function CustomDrawerContent(props) {
     }
   }, [drawerStatus])
 
+  //Fetch username from Firestore when userEmail changes
+    useEffect(() => {
+    const fetchUsername = async () => {
+      if (!userEmail) return
+
+      try {
+        const usersRef = collection(db, 'users')
+        const q = query(usersRef, where('email', '==', userEmail))
+        const querySnapshot = await getDocs(q)
+
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0].data()
+          setUsername(userDoc.name || 'Unknown User')
+        } else {
+          setUsername('Unknown User')
+        }
+      } catch (error) {
+        console.log('Error fetching username:', error)
+        setUsername('Error')
+      }
+    }
+
+    fetchUsername()
+  }, [userEmail])
+
+
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#0b1220' : '#ffffff' }}>
       <DrawerContentScrollView
         {...props}
         contentContainerStyle={{ backgroundColor: isDark ? '#0b1220' : '#ffffff' }}
       >
-        <View style={[styles.header, isDark && styles.headerDark]}>
-          <Text style={[styles.name, isDark && styles.nameDark]}>Savannah Herds</Text>
-          <Text style={[styles.sub, isDark && styles.subDark]}>
-            Email: {userEmail || 'Not signed in'}
-          </Text>
-          <Text style={[styles.sub, isDark && styles.subDark]}>
-            County: {selectedCounty || 'Not selected'}
+    
+      <View style={[styles.header, isDark && styles.headerDark]}>
+        <View style={{ marginBottom: 10 }}>
+          <Text style={[styles.name, isDark && styles.nameDark]}>
+            Savannah Herds
           </Text>
         </View>
 
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <MaterialCommunityIcons 
+            name="account-circle" 
+            size={40} 
+            color={isDark ? '#e5e7eb' : '#111827'} 
+            style={{ marginRight: 15 }} 
+          />
+
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sub, isDark && styles.subDark]}>
+              {username || 'Loading...'}
+            </Text>
+
+            <Text style={[styles.sub, isDark && styles.subDark]}>
+              {userEmail || 'Not signed in'}
+            </Text>
+
+            <Text style={[styles.sub, isDark && styles.subDark]}>
+              Selected County: {selectedCounty || 'Not selected'}
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View style={{ height: 20 }} />
+
+
         <DrawerItemList {...props} />
       </DrawerContentScrollView>
+      
 
       <View style={[styles.footer, isDark && styles.footerDark]}>
-        <DrawerItem
-          label="Logout"
-          labelStyle={{ color: isDark ? '#e5e7eb' : '#111827' }}
-          icon={({ size }) => (
-            <MaterialCommunityIcons name="logout" size={size} color={isDark ? '#e5e7eb' : '#111827'} />
-          )}
-          onPress={async () => {
-            try {
-              await auth.signOut()
-              router.replace('/login')
-            } catch (e) {
-              console.log('Logout failed:', e)
-            }
-          }}
-        />
+      <DrawerItem
+        label="Logout"
+        labelStyle={{ color: isDark ? '#e5e7eb' : '#111827', fontWeight: '600' }}
+        icon={({ size, color }) => (
+          <MaterialCommunityIcons
+            name="logout"
+            size={size}
+            color={isDark ? '#e5e7eb' : '#111827'}
+          />
+        )}
+        onPress={async () => {
+          try {
+            await AsyncStorage.setItem('locked', 'true');
+            await AsyncStorage.removeItem('userPIN');
+            await AsyncStorage.setItem('isLoggedIn', 'false');
+
+            await auth.signOut();
+            router.replace('/login');
+          } catch (error) {
+            console.error('Logout failed:', error);
+          }
+        }}
+      />
+
+        <View style={{ height: 10 }} />
         <DrawerItem
           label="Settings"
           labelStyle={{ color: isDark ? '#e5e7eb' : '#111827' }}
           icon={({ size }) => (
-            <MaterialCommunityIcons name="cog" size={size} color={isDark ? '#e5e7eb' : '#111827'} />
+            <MaterialCommunityIcons
+              name="cog"
+              size={size}
+              color={isDark ? '#e5e7eb' : '#111827'}
+            />
           )}
           onPress={() => router.push('/settings')}
         />
+          <View style={{ height: 70 }} />
       </View>
     </View>
   )

@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "../Config/firebaseConfig";
 import { useRouter } from "expo-router";
 
@@ -24,7 +24,6 @@ const Login = () => {
   const [password, setPassword] = useState("");
 
   const [pin, setPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
   const [enteredPin, setEnteredPin] = useState("");
 
   const [error, setError] = useState("");
@@ -32,21 +31,26 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setStep("login");
-        return;
-      }
+    const checkLogin = async () => {
+      try {
+        const loggedIn = await AsyncStorage.getItem("isLoggedIn");
+        const storedPin = await AsyncStorage.getItem("userPIN");
 
-      const storedPin = await AsyncStorage.getItem("userPIN");
-      setStep(storedPin ? "pinLogin" : "createPin");
-    });
-    return () => unsub();
+        if (loggedIn === "true") {
+          setStep("pinLogin");
+        } else {
+          setStep("login");
+        }
+      } catch {
+        setStep("login");
+      }
+    };
+    checkLogin();
   }, []);
 
+  // Step 1: Email/Password login
   const handleLogin = async () => {
-    setError("");
-    setSuccess("");
+    setError(""); setSuccess("");
     if (!email.trim() || !password.trim()) {
       setError("Please enter email and password");
       return;
@@ -55,55 +59,75 @@ const Login = () => {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password.trim());
-      setSuccess("Login successful, create your PIN");
-      setPassword(""); // clear password
-      setStep("createPin");
-    } catch (error) {
-      setError(error.message);
+      await AsyncStorage.setItem("isLoggedIn", "true");
+
+      const storedPin = await AsyncStorage.getItem("userPIN");
+      if (storedPin) {
+        setStep("pinLogin");
+      } else {
+        setStep("createPin");
+      }
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // Step 2a: Create PIN (if none exists)
   const handleCreatePin = async () => {
-    setError("");
-    setSuccess("");
-
-    if (!/^\d{4}$/.test(pin) || !/^\d{4}$/.test(confirmPin)) {
+    setError(""); setSuccess("");
+    if (!/^\d{4}$/.test(pin)) {
       setError("PIN must be exactly 4 digits");
-      return;
-    }
-    if (pin !== confirmPin) {
-      setError("PINs do not match");
       return;
     }
 
     setLoading(true);
     try {
       await AsyncStorage.setItem("userPIN", pin);
-      setSuccess("PIN created successfully!");
       setPin("");
-      setConfirmPin("");
-      router.replace("/");
+      setStep("pinLogin");
+      setSuccess("PIN created! Please login with it.");
+    } catch (err) {
+      setError("Failed to save PIN");
     } finally {
       setLoading(false);
     }
   };
 
+  // Step 2b: PIN login
   const handlePinLogin = async () => {
-    setError("");
+    setError(""); setSuccess("");
+    if (!/^\d{4}$/.test(enteredPin)) {
+      setError("PIN must be exactly 4 digits");
+      return;
+    }
+
     setLoading(true);
     try {
       const storedPin = await AsyncStorage.getItem("userPIN");
       if (enteredPin === storedPin) {
-        setEnteredPin("");
         router.replace("/");
+        await AsyncStorage.setItem("isLoggedIn", "true");
+        setEnteredPin("");
+        
       } else {
-        setError("Invalid PIN, try again");
+        setError("Invalid PIN");
+        setEnteredPin("");
       }
+    } catch (err) {
+      setError("Error verifying PIN");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    await AsyncStorage.removeItem("isLoggedIn");
+    await AsyncStorage.removeItem("userPIN");
+    setStep("login");
+    setEmail(""); setPassword(""); setEnteredPin(""); setError(""); setSuccess("");
   };
 
   if (step === "loading") {
@@ -127,6 +151,7 @@ const Login = () => {
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {success ? <Text style={styles.success}>{success}</Text> : null}
 
+          {/* Step 1: Email/Password */}
           {step === "login" && (
             <>
               <Text style={styles.title}>Welcome to Savannah Herds</Text>
@@ -150,50 +175,12 @@ const Login = () => {
                 onPress={handleLogin}
                 disabled={loading}
               >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Login</Text>
-                )}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login</Text>}
               </TouchableOpacity>
             </>
           )}
 
-          {step === "createPin" && (
-            <>
-              <Text style={styles.title}>Create a 4-Digit PIN</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter PIN"
-                keyboardType="numeric"
-                secureTextEntry
-                maxLength={4}
-                value={pin}
-                onChangeText={setPin}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm PIN"
-                keyboardType="numeric"
-                secureTextEntry
-                maxLength={4}
-                value={confirmPin}
-                onChangeText={setConfirmPin}
-              />
-              <TouchableOpacity
-                style={styles.button}
-                onPress={handleCreatePin}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Save PIN</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
-
+          {/* Step 2: PIN login / Create PIN */}
           {step === "pinLogin" && (
             <>
               <Text style={styles.title}>Enter PIN</Text>
@@ -211,14 +198,39 @@ const Login = () => {
                 onPress={handlePinLogin}
                 disabled={loading}
               >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Login</Text>
-                )}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleLogout}>
+                <Text style={styles.clickableText}>Use Different Account</Text>
               </TouchableOpacity>
             </>
           )}
+
+          {step === "createPin" && (
+            <>
+              <Text style={styles.title}>Create a 4-Digit PIN</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter PIN"
+                keyboardType="numeric"
+                secureTextEntry
+                maxLength={4}
+                value={pin}
+                onChangeText={setPin}
+              />
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleCreatePin}
+                disabled={loading}
+              >
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save PIN</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleLogout}>
+                <Text style={styles.clickableText}>Use Different Account</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -229,40 +241,13 @@ export default Login;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f9fafb" },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20 },
   logo: { width: 100, height: 100, marginBottom: 20, borderRadius: 50 },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 20,
-    color: "#111827",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 16,
-    backgroundColor: "#fff",
-    width: "100%",
-    maxWidth: 360,
-  },
-  button: {
-    backgroundColor: "#1f8b2c",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-    width: "100%",
-    maxWidth: 360,
-  },
+  title: { fontSize: 22, fontWeight: "700", textAlign: "center", marginBottom: 20, color: "#111827" },
+  input: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 10, padding: 14, marginBottom: 16, backgroundColor: "#fff", width: "100%", maxWidth: 360 },
+  button: { backgroundColor: "#1f8b2c", paddingVertical: 14, borderRadius: 10, alignItems: "center", marginTop: 10, width: "100%", maxWidth: 360 },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  error: { color: "red", marginBottom: 10 },
-  success: { color: "green", marginBottom: 10 },
+  error: { color: "red", marginBottom: 10, textAlign: "center" },
+  success: { color: "green", marginBottom: 10, textAlign: "center" },
+  clickableText: { color: "#1f8b2c", fontWeight: "600", fontSize: 16, textDecorationLine: "underline", textAlign: "center", marginTop: 10 },
 });
