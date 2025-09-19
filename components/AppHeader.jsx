@@ -77,7 +77,7 @@ export default function AppHeader() {
             styles.appNameText,
             isDark ? styles.appNameTextDark : styles.appNameTextLight
           ]}>
-            Savannah Herds
+            Savanna Herds Lmtd
           </Text>
         </View>
       </View>

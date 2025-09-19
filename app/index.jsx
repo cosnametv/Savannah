@@ -32,14 +32,14 @@ const FarmersAsHome = () => {
   // Farmer state
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
-  const [gender, setGender] = useState("Select Gender");
+  const [gender, setGender] = useState(null);
   const [idNumber, setIdNumber] = useState("");
   const [phone, setPhone] = useState("");
   const [date, setDate] = useState(new Date());
 
   // Livestock state
   const [goats, setGoats] = useState("");
-  const [ageGroup, setAgeGroup] = useState("Select Goat Age Group");
+  const [ageGroup, setAgeGroup] = useState(null);
   const [vaccinationDate, setVaccinationDate] = useState(null);
   const [vaccineType, setVaccineType] = useState("");
   const [traceability, setTraceability] = useState(false);
@@ -74,23 +74,18 @@ const handleSubmit = async () => {
   setIsSubmitting(true);
 
   // Validate gender
-  if (gender === null) {
+  if (gender !== "male" && gender !== "female") {
     Alert.alert("⚠️ Missing Gender", "Please select gender before continuing.");
     setIsSubmitting(false); 
     return;
   }
 
   // Validate age group
-  if (ageGroup === null) {
+  if (ageGroup !== "0-6" && ageGroup !== "7-12") {
     Alert.alert("⚠️ Missing Goat Age Group", "Please select goat age group before continuing.");
     setIsSubmitting(false); 
     return;
   }
-    if (phone.length !== 10 ) {
-      Alert.alert("⚠️ Invalid Phone", "Phone number must be 10 digits.");
-      setSubmitting(false);
-      return;
-    }
 
   // Validate required fields
   if (
@@ -172,12 +167,12 @@ const handleSubmit = async () => {
 
     // Reset form
     setName("");
-    setGender("");
+    setGender(null);
     setIdNumber("");
     setPhone("");
     setDate(new Date());
     setGoats("");
-    setAgeGroup("0-6");
+    setAgeGroup(null);
     setVaccinationDate(null);
     setVaccineType("");
     setTraceability(false);

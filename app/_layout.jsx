@@ -19,36 +19,44 @@ function ThemedDrawer() {
   const pathname = usePathname();
   const appState = useRef(AppState.currentState);
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
-      if (!user) router.replace('/login');
+      if (!user) {
+        router.replace('/login');
+        return;
+      }
+      // If logged in, enforce PIN setup
+      (async () => {
+        const pin = await AsyncStorage.getItem('localPin');
+        if (!pin) {
+          router.replace('/pinSetup');
+        }
+      })();
     });
     return unsubscribe;
   }, [pathname, router]);
 
-  // Lock app on background and PIN check on foreground
+
   useEffect(() => {
-    const handleAppStateChange = async (nextAppState) => {
-      const wasBackground = appState.current.match(/inactive|background/);
-      appState.current = nextAppState;
-
-      if (nextAppState === 'background') {
-        await AsyncStorage.setItem('locked', 'true');
+    const sub = AppState.addEventListener('change', async (nextState) => {
+      const now = Date.now();
+      if (nextState === 'background' || nextState === 'inactive') {
+        await AsyncStorage.setItem('lastActiveAt', String(now));
+        return;
       }
-
-      if (wasBackground && nextAppState === 'active') {
-        const user = auth.currentUser;
-        const locked = await AsyncStorage.getItem('locked');
-        const hasPin = await AsyncStorage.getItem('userPIN');
-
-        if (user && locked === 'true' && hasPin) {
-          router.replace('/login');
-        }
+      if (nextState === 'active') {
+        try {
+          const saved = await AsyncStorage.getItem('localPin');
+          if (!saved) return;
+          const lastStr = await AsyncStorage.getItem('lastActiveAt');
+          const last = lastStr ? parseInt(lastStr, 10) : 0;
+          const THIRTY_MIN = 30 * 60 * 1000;
+          if (last && now - last > THIRTY_MIN) {
+            router.replace('/pinLock');
+          }
+        } catch {}
       }
-    };
-
-    const sub = AppState.addEventListener('change', handleAppStateChange);
+    });
     return () => sub.remove();
   }, [router]);
 
@@ -73,6 +81,26 @@ function ThemedDrawer() {
           drawerItemStyle: { display: 'none' },
           drawerIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="login" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="pinSetup"
+        options={{
+          drawerLabel: 'Set PIN',
+          drawerItemStyle: { display: 'none' },
+          drawerIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="lock-plus" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="pinLock"
+        options={{
+          drawerLabel: 'PIN Lock',
+          drawerItemStyle: { display: 'none' },
+          drawerIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="lock" size={size} color={color} />
           ),
         }}
       />
@@ -106,7 +134,15 @@ function ThemedDrawer() {
           ),
         }}
       />
-      
+      <Drawer.Screen
+        name="OfftakePreview"
+        options={{
+          drawerLabel: 'Preview Offtakes',
+          drawerIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="star" size={size} color={color} />
+          ),
+        }}
+      />
       {/* Hidden settings */}
       <Drawer.Screen
         name="settings"

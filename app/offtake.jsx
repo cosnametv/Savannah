@@ -30,7 +30,7 @@ const OfftakeForm = () => {
 
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
-  const [gender, setGender] = useState("Select Gender");
+  const [gender, setGender] = useState(null);
   const [idNumber, setIdNumber] = useState("");
   const [phone, setPhone] = useState("");
   const [date, setDate] = useState(new Date());
@@ -108,12 +108,7 @@ const OfftakeForm = () => {
       return;
     }
 
-    if (phone.length !== 10) {
-      Alert.alert("⚠️ Invalid Phone", "Phone number must be 10 digits.");
-      setSubmitting(false);
-      return;
-    }
-    if (gender === null) {
+    if (gender !== "male" && gender !== "female") {
       Alert.alert("⚠️ Missing Gender", "Please select gender before continuing.");
       setSubmitting(false);
       return;
@@ -177,7 +172,7 @@ const OfftakeForm = () => {
 
       // Reset
       setName("");
-      setGender("");
+      setGender(null);
       setIdNumber("");
       setPhone("");
       setDate(new Date());

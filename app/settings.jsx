@@ -11,6 +11,8 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import AppHeader from "../components/AppHeader";
 import { useAppTheme } from "../contexts/ThemeContext";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 
 const COUNTIES = ["Samburu", "Turkana", "Isiolo", "Marsabit", "Kajiado", "Narok"];
 
@@ -19,6 +21,8 @@ export default function Settings() {
   const [showSheet, setShowSheet] = useState(false);
   const [showCountySheet, setShowCountySheet] = useState(false);
   const [selectedCounty, setSelectedCounty] = useState(null);
+  const [farmersPending, setFarmersPending] = useState(0);
+  const [offtakePending, setOfftakePending] = useState(0);
 
   // Load saved county when Settings mounts
   useEffect(() => {
@@ -32,6 +36,34 @@ export default function Settings() {
     };
     loadCounty();
   }, []);
+
+  // Load sync status whenever the screen focuses
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      const loadSyncStatus = async () => {
+        try {
+          const [farmersStr, offtakeStr] = await Promise.all([
+            AsyncStorage.getItem("localSyncFarmers"),
+            AsyncStorage.getItem("localSync"),
+          ]);
+          const farmersArr = farmersStr ? JSON.parse(farmersStr) : [];
+          const offtakeArr = offtakeStr ? JSON.parse(offtakeStr) : [];
+          if (!isActive) return;
+          setFarmersPending(Array.isArray(farmersArr) ? farmersArr.length : 0);
+          setOfftakePending(Array.isArray(offtakeArr) ? offtakeArr.length : 0);
+        } catch (e) {
+          if (!isActive) return;
+          setFarmersPending(0);
+          setOfftakePending(0);
+        }
+      };
+      loadSyncStatus();
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   // Save selected county
   const saveCounty = async (county) => {
@@ -91,6 +123,33 @@ export default function Settings() {
             </Text>
           </View>
         </TouchableOpacity>
+
+        {/* Sync Status (read-only) */}
+        <View style={styles.item}>
+          <View style={styles.itemTextWrapper}>
+            <Text
+              style={[styles.itemTitle, theme === "dark" && styles.darkText]}
+            >
+              Sync Status
+            </Text>
+            <Text
+              style={[
+                styles.itemSubtitle,
+                theme === "dark" && styles.darkSubtitle,
+              ]}
+            >
+              Farmers: {farmersPending > 0 ? `Pending (${farmersPending})` : "Synced"}
+            </Text>
+            <Text
+              style={[
+                styles.itemSubtitle,
+                theme === "dark" && styles.darkSubtitle,
+              ]}
+            >
+              Offtake: {offtakePending > 0 ? `Pending (${offtakePending})` : "Synced"}
+            </Text>
+          </View>
+        </View>
       </View>
 
       {/* Modal Bottom Sheet for Theme Switching */}

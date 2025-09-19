@@ -177,49 +177,69 @@ export default function Reports() {
         {/* ================== Offtakes & Farmers Side by Side ================== */}
         <View style={{ flexDirection: "row", marginHorizontal: 12, marginVertical: 6 }}>
           {/* Offtakes */}
-          <View
+          
+        <View
+          style={[
+            styles.card,
+            { flex: 1, marginRight: 6 },
+            theme === "dark" && styles.cardDark,
+          ]}
+        >
+          <View style={styles.cardAccent} />
+          <Icon name="cart" size={28} color="#f59e0b" />
+          <Text
             style={[
-              styles.card,
-              { flex: 1, marginRight: 6 },
-              theme === "dark" && styles.cardDark,
+              styles.title,
+              theme === "dark" && { color: "#e5e7eb" },
             ]}
           >
-            <Icon name="cart" size={28} color="#f59e0b" />
-            <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
-              Total Offtakes: {filteredOfftakes.length}
-            </Text>
-          </View>
+            Total Offtakes: {filteredOfftakes.length}
+          </Text>
+        </View>
+        
+        {/* Farmers */}
+        <View
+          style={[
+            styles.card,
+            { flex: 1, marginLeft: 6 },
+            theme === "dark" && styles.cardDark,
+          ]}
+        >
+          <View style={[styles.cardAccent, { backgroundColor: "#dc2626" }]} /> 
+          <Icon name="account-group" size={28} color="#dc2626" />
+          <Text
+            style={[
+              styles.title,
+              theme === "dark" && { color: "#e5e7eb" },
+            ]}
+          >
+            Farmers Reg: {totalFarmers}
+          </Text>
+        </View>
 
-          {/* Farmers */}
-          <View
-            style={[
-              styles.card,
-              { flex: 1, marginLeft: 6 },
-              theme === "dark" && styles.cardDark,
-            ]}
-          >
-            <Icon name="account-group" size={28} color="#16a34a" />
-            <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
-              Farmers Reg: {totalFarmers}
-            </Text>
-          </View>
         </View>
 
         {/* Performance per Location */}
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
-          <Icon name="map-marker" size={28} color="#f59e0b" />
+          <View style={[styles.cardAccent, { backgroundColor: "#16a34a" }]} /> 
+          <Icon name="map-marker" size={28} color="#16a34a" />
           <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
             Performance per County
           </Text>
           {locationStats.map((loc, idx) => (
-            <Text key={idx} style={[styles.subText, theme === "dark" && { color: "#d1d5db" }]}>
+            <Text
+              key={idx}
+              style={[styles.subText, theme === "dark" && { color: "#d1d5db" }]}
+            >
               {loc.location}: {loc.entries} Offtakes ({loc.percentage}%)
             </Text>
           ))}
         </View>
 
+
         {/* Pie Chart Gender */}
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
+          <View style={[styles.cardAccent, { backgroundColor: "#dc2626" }]} /> 
           <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
             Gender Distribution
           </Text>
@@ -244,8 +264,10 @@ export default function Reports() {
           />
         </View>
 
+
         {/* Total Revenue */}
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
+          <View style={[styles.cardAccent, { backgroundColor: "#10b981" }]} />
           <Icon name="currency-usd" size={28} color="#10b981" />
           <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
             Total Revenue: KES {totalRevenue.toLocaleString()}
@@ -254,16 +276,21 @@ export default function Reports() {
 
         {/* Beneficiaries per Location */}
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
-          <Icon name="city" size={28} color="#3b82f6" />
+          <View style={[styles.cardAccent, { backgroundColor: "#ef4444" }]} /> 
+          <Icon name="city" size={28} color="#ef4444" />
           <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
             Beneficiaries per County
           </Text>
           {revenueStats.map((r, idx) => (
-            <Text key={idx} style={[styles.subText, theme === "dark" && { color: "#d1d5db" }]}>
+            <Text
+              key={idx}
+              style={[styles.subText, theme === "dark" && { color: "#d1d5db" }]}
+            >
               {r.location}: KES {r.amount.toLocaleString()} ({r.percentage}%)
             </Text>
           ))}
         </View>
+
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -286,4 +313,36 @@ const styles = StyleSheet.create({
   cardDark: { backgroundColor: "#1f2937" },
   title: { fontSize: 16, fontWeight: "700", marginTop: 8, color: "#111827" },
   subText: { fontSize: 14, color: "#374151" },
+  card: {
+  backgroundColor: "#fff",
+  borderRadius: 12,
+  padding: 13,
+  marginBottom: 12,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 4,
+  elevation: 4,
+  overflow: "hidden", 
+},
+cardDark: {
+  backgroundColor: "#1f2937",
+},
+cardAccent: {
+  position: "absolute",
+  right: 0,
+  top: 0,
+  bottom: 0,
+  width: 6,
+  backgroundColor: "#22c55e", 
+  borderTopRightRadius: 12,
+  borderBottomRightRadius: 12,
+},
+title: {
+  fontSize: 16,
+  fontWeight: "bold",
+  marginTop: 8,
+  color: "#111827",
+},
+
 });

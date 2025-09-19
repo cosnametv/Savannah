@@ -20,7 +20,6 @@ export default function CustomDrawerContent(props) {
   const drawerStatus = useDrawerStatus() 
   const [username, setUsername] = useState(null)
 
-  // Listen for auth changes
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       setUserEmail(user?.email || '')
@@ -28,7 +27,6 @@ export default function CustomDrawerContent(props) {
     return () => unsub()
   }, [])
 
-  // Refresh county whenever drawer opens
   useEffect(() => {
     const loadCounty = async () => {
       try {
@@ -44,7 +42,6 @@ export default function CustomDrawerContent(props) {
     }
   }, [drawerStatus])
 
-  //Fetch username from Firestore when userEmail changes
     useEffect(() => {
     const fetchUsername = async () => {
       if (!userEmail) return
@@ -80,7 +77,7 @@ export default function CustomDrawerContent(props) {
       <View style={[styles.header, isDark && styles.headerDark]}>
         <View style={{ marginBottom: 10 }}>
           <Text style={[styles.name, isDark && styles.nameDark]}>
-            Savannah Herds
+            Savanna Herds Lmtd
           </Text>
         </View>
 
@@ -127,10 +124,6 @@ export default function CustomDrawerContent(props) {
         )}
         onPress={async () => {
           try {
-            await AsyncStorage.setItem('locked', 'true');
-            await AsyncStorage.removeItem('userPIN');
-            await AsyncStorage.setItem('isLoggedIn', 'false');
-
             await auth.signOut();
             router.replace('/login');
           } catch (error) {
