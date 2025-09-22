@@ -6,7 +6,6 @@ import {
   SafeAreaView,
   TextInput,
   TouchableOpacity,
-  Switch,
   Platform,
   Alert,
   ActivityIndicator,
@@ -22,6 +21,8 @@ import { database } from "../Config/firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo"; 
 import { useAutoSync } from "../hooks/useAutoSyncFarmers";
+
+const COUNTIES = ["Samburu", "Turkana", "Isiolo", "Marsabit", "Kajiado", "Narok"];
 
 const FarmersAsHome = () => {
   useAutoSync();
@@ -39,16 +40,16 @@ const FarmersAsHome = () => {
 
   // Livestock state
   const [goats, setGoats] = useState("");
+  const [sheep, setSheep] = useState("");
+  const [cattle, setCattle] = useState("");
   const [ageGroup, setAgeGroup] = useState(null);
   const [vaccinationDate, setVaccinationDate] = useState(null);
   const [vaccineType, setVaccineType] = useState("");
-  const [traceability, setTraceability] = useState(false);
+  const [traceability, setTraceability] = useState(null);
 
-  // Date picker
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [activeDateField, setActiveDateField] = useState(null);
 
-  // Loading state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatDate = (dateObj) =>
@@ -73,27 +74,32 @@ const handleSubmit = async () => {
   if (isSubmitting) return;
   setIsSubmitting(true);
 
-  // Validate gender
   if (gender !== "male" && gender !== "female") {
     Alert.alert("⚠️ Missing Gender", "Please select gender before continuing.");
     setIsSubmitting(false); 
     return;
   }
 
-  // Validate age group
   if (ageGroup !== "0-6" && ageGroup !== "7-12") {
     Alert.alert("⚠️ Missing Goat Age Group", "Please select goat age group before continuing.");
     setIsSubmitting(false); 
     return;
   }
 
-  // Validate required fields
+  if (traceability !== true && traceability !== false) {
+    Alert.alert("⚠️ Missing Traceability", "Please select traceability before continuing.");
+    setIsSubmitting(false);
+    return;
+  }
+
   if (
     !name.trim() ||
     !location.trim() ||
     !idNumber.trim() ||
     !phone.trim() ||
     !goats.trim() ||
+    !sheep.trim() ||
+    !cattle.trim() ||
     !vaccineType.trim()
   ) {
     Alert.alert("⚠️ Validation", "Please fill in all required fields.");
@@ -112,6 +118,13 @@ const handleSubmit = async () => {
       return;
     }
 
+    const prefix = savedCounty.slice(0, 3).toUpperCase();
+    const counterKey = `codeCounter_${prefix}`;
+    const lastCounter = await AsyncStorage.getItem(counterKey);
+    const nextCounter = lastCounter ? parseInt(lastCounter, 10) + 1 : 1;
+    await AsyncStorage.setItem(counterKey, String(nextCounter));
+    const farmerId = `${prefix}${String(nextCounter).padStart(4, "0")}`;
+
     const farmerData = {
       name,
       location,
@@ -120,27 +133,27 @@ const handleSubmit = async () => {
       phone,
       registrationDate: formatDate(date),
       goats,
+      sheep,
+      cattle,
       ageGroup,
       vaccinationDate: vaccinationDate ? formatDate(vaccinationDate) : "N/A",
       vaccineType,
       traceability,
+      farmerId,
       county: savedCounty,
     };
 
-    // Save locally
     const existing = await AsyncStorage.getItem("farmers");
     const farmers = existing ? JSON.parse(existing) : [];
     farmers.push(farmerData);
     await AsyncStorage.setItem("farmers", JSON.stringify(farmers));
 
-    // Check online
     const state = await NetInfo.fetch();
 
     if (state.isConnected) {
       const farmersRef = ref(database, "farmers");
       await push(farmersRef, farmerData);
 
-      // Sync pending offline data
       const pending = await AsyncStorage.getItem("localSyncFarmers");
       if (pending) {
         const localSync = JSON.parse(pending);
@@ -156,7 +169,6 @@ const handleSubmit = async () => {
 
       Alert.alert("✅ Success", "Farmer recorded successfully!");
     } else {
-      // Save to local sync
       const pending = await AsyncStorage.getItem("localSyncFarmers");
       const localSync = pending ? JSON.parse(pending) : [];
       localSync.push(farmerData);
@@ -172,10 +184,12 @@ const handleSubmit = async () => {
     setPhone("");
     setDate(new Date());
     setGoats("");
+    setSheep("");
+    setCattle("");
     setAgeGroup(null);
     setVaccinationDate(null);
     setVaccineType("");
-    setTraceability(false);
+    setTraceability(null);
     setStep(1);
   } catch (error) {
     console.log("Failed to save farmer:", error);
@@ -327,6 +341,28 @@ return (
               onChangeText={setGoats}
             />
 
+            {/* Sheep */}
+            <Text style={[styles.label, isDark && styles.labelDark]}>Total Number of Sheep</Text>
+            <TextInput
+              style={[styles.input, isDark && styles.inputDark]}
+              placeholder="Enter number of sheep"
+              placeholderTextColor={isDark ? "#9ca3af" : "#6b7280"}
+              keyboardType="numeric"
+              value={sheep}
+              onChangeText={setSheep}
+            />
+
+            {/* Cattle */}
+            <Text style={[styles.label, isDark && styles.labelDark]}>Total Number of Cattle</Text>
+            <TextInput
+              style={[styles.input, isDark && styles.inputDark]}
+              placeholder="Enter number of cattle"
+              placeholderTextColor={isDark ? "#9ca3af" : "#6b7280"}
+              keyboardType="numeric"
+              value={cattle}
+              onChangeText={setCattle}
+            />
+
             {/* Goat Age Group */}
             <Text style={[styles.label, isDark && styles.labelDark]}>Goat Age Group</Text>
             <View style={[styles.pickerWrapper, isDark && styles.inputDark]}>
@@ -365,10 +401,19 @@ return (
               onChangeText={setVaccineType}
             />
 
-            {/* Traceability Switch */}
-            <View style={styles.switchRow}>
-              <Text style={[styles.label, isDark && styles.labelDark]}>Traceability</Text>
-              <Switch value={traceability} onValueChange={setTraceability} />
+            {/* Traceability Dropdown */}
+            <Text style={[styles.label, isDark && styles.labelDark]}>Traceability</Text>
+            <View style={[styles.pickerWrapper, isDark && styles.inputDark]}>
+              <Picker
+                selectedValue={traceability}
+                onValueChange={setTraceability}
+                style={{ color: isDark ? "#fff" : "#000" }}
+                dropdownIconColor={isDark ? "#fff" : "#000"}
+              >
+                <Picker.Item label="Select Traceability" value={null} enabled={false} />
+                <Picker.Item label="Yes" value={true} />
+                <Picker.Item label="No" value={false} />
+              </Picker>
             </View>
 
             {/* Navigation */}

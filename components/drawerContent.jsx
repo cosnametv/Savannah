@@ -125,7 +125,7 @@ export default function CustomDrawerContent(props) {
         onPress={async () => {
           try {
             await auth.signOut();
-            router.replace('/login');
+            router.replace('/pinLock');
           } catch (error) {
             console.error('Logout failed:', error);
           }

@@ -48,23 +48,38 @@ const OfftakeForm = () => {
       year: "numeric",
     });
 
-  const getPriceBasedOnWeight = (w) => {
-    if (w >= 14 && w <= 14.99) return 3500;
-    if (w >= 15 && w <= 15.99) return 3700;
-    if (w >= 16 && w <= 16.99) return 4000;
-    if (w >= 17 && w <= 17.99) return 4300;
-    if (w >= 18 && w <= 18.99) return 4500;
-    if (w >= 19 && w <= 19.99) return 4800;
-    if (w >= 20 && w <= 20.99) return 5000;
-    if (w >= 21 && w <= 21.99) return 5300;
-    if (w >= 22 && w <= 22.99) return 5500;
-    if (w >= 23 && w <= 24.99) return 5800;
-    if (w >= 25 && w <= 25.99) return 6000;
-    if (w >= 26 && w <= 26.99) return 6300;
-    if (w >= 27 && w <= 27.99) return 6500;
-    if (w >= 28 && w <= 29.99) return 7000;
-    return 7000;
-  };
+const getPriceBasedOnWeight = (w) => {
+  if (w >= 14 && w < 15) return 3300;
+  if (w >= 15 && w < 16) return 3600;
+  if (w >= 16 && w < 17) return 3800;
+  if (w >= 17 && w < 18) return 4000;
+  if (w >= 18 && w < 19) return 4300;
+  if (w >= 19 && w < 20) return 4500;
+  if (w >= 20 && w < 21) return 4700;
+  if (w >= 21 && w < 22) return 5000;
+  if (w >= 22 && w < 23) return 5200;
+  if (w >= 23 && w < 24) return 5500;
+  if (w >= 24 && w < 25) return 5700;
+  if (w >= 25 && w < 26) return 5900;
+  if (w >= 26 && w < 27) return 6200;
+  if (w >= 27 && w < 28) return 6400;
+  if (w >= 28 && w < 29) return 6700;
+  if (w >= 29 && w < 30) return 6900;
+  if (w >= 30 && w < 31) return 7100;
+  if (w >= 31 && w < 32) return 7400;
+  if (w >= 32 && w < 33) return 7600;
+  if (w >= 33 && w < 34) return 7900;
+  if (w >= 34 && w < 35) return 8100;
+  if (w >= 35 && w < 36) return 8300;
+  if (w >= 36 && w < 37) return 8600;
+  if (w >= 37 && w < 38) return 8800;
+  if (w >= 38 && w < 39) return 9000;
+  if (w >= 39 && w < 40) return 9300;
+  if (w >= 40 && w < 41) return 9500;
+  
+  return null; 
+};
+
 
   const weightRefs = useRef([]);
 
@@ -237,15 +252,18 @@ return (
           <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
             Gender
           </Text>
-          <Picker
-            selectedValue={gender}
-            onValueChange={(val) => setGender(val)}
-            style={[styles.picker, theme === "dark" && styles.pickerDark]}
-          >
-            <Picker.Item label="Select Gender" value={null} enabled={false}/> 
-            <Picker.Item label="Male" value="male" />
-            <Picker.Item label="Female" value="female" />
-          </Picker>
+          <View style={[styles.pickerWrapper, theme === "dark" && styles.pickerWrapperDark]}>
+            <Picker
+              selectedValue={gender}
+              onValueChange={(val) => setGender(val)}
+              style={{ color: theme === "dark" ? "#fff" : "#000" }}
+              dropdownIconColor={theme === "dark" ? "#fff" : "#000"}
+            >
+              <Picker.Item label="Select Gender" value={null} enabled={false}/> 
+              <Picker.Item label="Male" value="male" />
+              <Picker.Item label="Female" value="female" />
+            </Picker>
+          </View>
 
           {/* ID Number */}
           <Text style={[styles.label, theme === "dark" && styles.labelDark]}>
@@ -397,18 +415,16 @@ const styles = StyleSheet.create({
     color: "#f9fafb",
   },
 
-  picker: {
+  pickerWrapper: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
     marginBottom: 16,
     backgroundColor: "#fff",
-    color: "#000",
   },
-  pickerDark: {
+  pickerWrapperDark: {
     backgroundColor: "#1f2937",
     borderColor: "#374151",
-    color: "#f9fafb",
   },
 
   weightRow: {

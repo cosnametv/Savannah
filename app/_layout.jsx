@@ -22,7 +22,7 @@ function ThemedDrawer() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
       if (!user) {
-        router.replace('/login');
+        router.replace('/pinLock');
         return;
       }
       // If logged in, enforce PIN setup
