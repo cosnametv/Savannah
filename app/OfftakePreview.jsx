@@ -160,33 +160,11 @@ return (
               { backgroundColor: theme === "dark" ? "#10B981" : "#4CAF50" },
             ]}
           />
-          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-            Name: {item.name}
-          </Text>
-          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-            Location: {item.location}
-          </Text>
-          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-            Gender: {item.gender}
-          </Text>
-          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-            ID: {item.idNumber}
-          </Text>
-          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-            Phone: {item.phone}
-          </Text>
-          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-            County: {item.county}
-          </Text>
-          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-            Date: {item.date}
-          </Text>
-          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-            Total Goats: {item.totalGoats}
-          </Text>
-          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>
-            Total Price: KES {item.totalPrice?.toLocaleString() || 0}
-          </Text>
+          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>Name: {item.name}</Text>
+          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>ID: {item.idNumber}</Text>
+          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>Location: {item.location}</Text>
+          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>Date: {item.date}</Text>
+          <Text style={[styles.item, theme === "dark" && styles.itemDark]}>Total Price: KES {item.totalPrice?.toLocaleString() || 0}</Text>
 
           {/* Goat Breakdown */}
           {item.goats && item.goats.length > 0 && (
@@ -235,7 +213,7 @@ const styles = StyleSheet.create({
   // Summary container
   reportCard: {
     backgroundColor: "#f9f9f9",
-    padding: 12,
+    padding: 0,
     borderRadius: 12,
     marginBottom: 16,
   },
@@ -243,6 +221,8 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
 
   // Summary Boxes
@@ -250,7 +230,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     padding: 12,
-    margin: 8,
+    marginHorizontal: 6,
+    marginVertical: 0,
     borderRadius: 12,
     backgroundColor: "#fff",
     shadowColor: "#000",

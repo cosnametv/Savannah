@@ -43,12 +43,12 @@ const FarmersAsHome = () => {
   const [sheep, setSheep] = useState("");
   const [cattle, setCattle] = useState("");
   const [ageGroup, setAgeGroup] = useState(null);
-  const [vaccinationDate, setVaccinationDate] = useState(null);
+  const [vaccinated, setVaccinated] = useState(null);
   const [vaccineType, setVaccineType] = useState("");
   const [traceability, setTraceability] = useState(null);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [activeDateField, setActiveDateField] = useState(null);
+  
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -62,11 +62,7 @@ const FarmersAsHome = () => {
   const onDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      if (activeDateField === "registration") {
-        setDate(selectedDate);
-      } else if (activeDateField === "vaccination") {
-        setVaccinationDate(selectedDate);
-      }
+      setDate(selectedDate);
     }
   };
 
@@ -100,10 +96,16 @@ const handleSubmit = async () => {
     !goats.trim() ||
     !sheep.trim() ||
     !cattle.trim() ||
-    !vaccineType.trim()
+    (vaccinated === true && !vaccineType.trim())
   ) {
     Alert.alert("⚠️ Validation", "Please fill in all required fields.");
     setIsSubmitting(false); 
+    return;
+  }
+
+  if (vaccinated !== true && vaccinated !== false) {
+    Alert.alert("⚠️ Missing Vaccination Status", "Please select if the herd is vaccinated.");
+    setIsSubmitting(false);
     return;
   }
 
@@ -136,11 +138,12 @@ const handleSubmit = async () => {
       sheep,
       cattle,
       ageGroup,
-      vaccinationDate: vaccinationDate ? formatDate(vaccinationDate) : "N/A",
+      vaccinated,
       vaccineType,
       traceability,
       farmerId,
       county: savedCounty,
+      subcounty: await AsyncStorage.getItem("selectedSubcounty"),
     };
 
     const existing = await AsyncStorage.getItem("farmers");
@@ -187,7 +190,7 @@ const handleSubmit = async () => {
     setSheep("");
     setCattle("");
     setAgeGroup(null);
-    setVaccinationDate(null);
+    setVaccinated(null);
     setVaccineType("");
     setTraceability(null);
     setStep(1);
@@ -310,7 +313,6 @@ return (
             <TouchableOpacity
               style={[styles.input, isDark && styles.inputDark]}
               onPress={() => {
-                setActiveDateField("registration");
                 setShowDatePicker(true);
               }}
             >
@@ -379,27 +381,49 @@ return (
             </View>
 
             {/* Vaccination */}
-            <Text style={[styles.label, isDark && styles.labelDark]}>Vaccination Date</Text>
-            <TouchableOpacity
-              style={[styles.input, isDark && styles.inputDark]}
-              onPress={() => {
-                setActiveDateField("vaccination");
-                setShowDatePicker(true);
-              }}
-            >
-              <Text style={{ color: isDark ? "#fff" : "#000" }}>
-                {vaccinationDate ? formatDate(vaccinationDate) : "Select Vaccination Date (or N/A)"}
-              </Text>
-            </TouchableOpacity>
+            <Text style={[styles.label, isDark && styles.labelDark]}>Vaccinated</Text>
+            <View style={[styles.pickerWrapper, isDark && styles.inputDark]}>
+              <Picker
+                selectedValue={vaccinated}
+                onValueChange={(val) => {
+                  setVaccinated(val);
+                  if (val === true) {
+                    setVaccineType("");
+                  } else {
+                    setVaccineType("N/A");
+                  }
+                }}
+                style={{ color: isDark ? "#fff" : "#000" }}
+                dropdownIconColor={isDark ? "#fff" : "#000"}
+              >
+                <Picker.Item label="Select Vaccination Status" value={null} enabled={false} />
+                <Picker.Item label="Yes" value={true} />
+                <Picker.Item label="No" value={false} />
+              </Picker>
+            </View>
 
             <Text style={[styles.label, isDark && styles.labelDark]}>Vaccine Type</Text>
-            <TextInput
-              style={[styles.input, isDark && styles.inputDark]}
-              placeholder="Vaccine Type (if any)"
-              placeholderTextColor={isDark ? "#9ca3af" : "#6b7280"}
-              value={vaccineType}
-              onChangeText={setVaccineType}
-            />
+            {vaccinated === true ? (
+              <View style={[styles.pickerWrapper, isDark && styles.inputDark]}>
+                <Picker
+                  selectedValue={vaccineType}
+                  onValueChange={(val) => setVaccineType(val)}
+                  style={{ color: isDark ? "#fff" : "#000" }}
+                  dropdownIconColor={isDark ? "#fff" : "#000"}
+                >
+                  <Picker.Item label="Select Vaccine Type" value={null} enabled={false} />
+                  <Picker.Item label="1" value="1" />
+                  <Picker.Item label="2" value="2" />
+                  <Picker.Item label="3" value="3" />
+                </Picker>
+              </View>
+            ) : (
+              <TextInput
+                style={[styles.input, isDark && styles.inputDark]}
+                value={vaccineType || "N/A"}
+                editable={false}
+              />
+            )}
 
             {/* Traceability Dropdown */}
             <Text style={[styles.label, isDark && styles.labelDark]}>Traceability</Text>
@@ -440,7 +464,7 @@ return (
         {/* Date Picker */}
         {showDatePicker && (
           <DateTimePicker
-            value={activeDateField === "registration" ? date : vaccinationDate || new Date()}
+            value={date}
             mode="date"
             display={Platform.OS === "ios" ? "spinner" : "default"}
             onChange={onDateChange}

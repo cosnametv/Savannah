@@ -80,10 +80,23 @@ const getPriceBasedOnWeight = (w) => {
   return null; 
 };
 
-
   const weightRefs = useRef([]);
 
   const addWeight = () => {
+    const hasInvalid = weights.some((w) => {
+      if (w.live === "") return false; 
+      const liveNum = parseFloat(w.live);
+      return isNaN(liveNum) || liveNum < 14 || liveNum > 40.9;
+    });
+
+    if (hasInvalid) {
+      Alert.alert(
+        "⚠️ Invalid Weight",
+        "Live weight must be between 14.0 kg and 40.9 kg."
+      );
+      return;
+    }
+
     setWeights((prev) => [...prev, { live: "", carcass: "", price: "" }]);
     setTimeout(() => {
       const lastIndex = weightRefs.current.length - 1;
@@ -93,17 +106,30 @@ const getPriceBasedOnWeight = (w) => {
     }, 100);
   };
   const updateWeight = (index, liveVal) => {
-    let updated = [...weights];
-    let live = parseFloat(liveVal);
-    if (!isNaN(live) && live >= 14 && live <= 40) {
-      let carcass = (live * 0.42).toFixed(2);
-      let price = getPriceBasedOnWeight(live).toFixed(2);
+    // Allow clearing the field
+    if (liveVal === "") {
+      const cleared = [...weights];
+      cleared[index] = { live: "", carcass: "", price: "" };
+      setWeights(cleared);
+      const totalCleared = cleared.reduce((sum, w) => sum + (w.price ? parseFloat(w.price) : 0), 0);
+      setTotalPrice(totalCleared);
+      return;
+    }
+
+    const live = parseFloat(liveVal);
+    const updated = [...weights];
+
+    if (!isNaN(live) && live >= 14 && live <= 40.9) {
+      const carcass = (live * 0.42).toFixed(2);
+      const priceNum = getPriceBasedOnWeight(live);
+      const price = priceNum != null ? priceNum.toFixed(2) : "";
       updated[index] = { live: liveVal, carcass, price };
     } else {
+
       updated[index] = { live: liveVal, carcass: "", price: "" };
     }
-    setWeights(updated);
 
+    setWeights(updated);
     const total = updated.reduce((sum, w) => sum + (w.price ? parseFloat(w.price) : 0), 0);
     setTotalPrice(total);
   };
@@ -129,8 +155,14 @@ const getPriceBasedOnWeight = (w) => {
       return;
     }
 
-    if (weights.length === 0 || weights.every((w) => !w.live || !w.price)) {
-      Alert.alert("⚠️ Missing Weights", "Please enter at least one valid goat weight.");
+    // Build list of valid goats only (ignore empty/invalid rows). Require at least one valid.
+    const validGoats = weights.filter((w) => {
+      const val = parseFloat(w.live);
+      return !isNaN(val) && val >= 14 && val <= 40.9 && w.price;
+    });
+
+    if (validGoats.length === 0) {
+      Alert.alert("⚠️ Missing Weights", "Please enter at least one valid goat weight (14.0–40.9 kg).");
       setSubmitting(false);
       return;
     }
@@ -143,6 +175,8 @@ const getPriceBasedOnWeight = (w) => {
         return;
       }
 
+      const recomputedTotal = validGoats.reduce((sum, w) => sum + (w.price ? parseFloat(w.price) : 0), 0);
+
       const offtakeData = {
         name,
         location,
@@ -151,9 +185,10 @@ const getPriceBasedOnWeight = (w) => {
         phone,
         date: formatDate(date),
         county,
-        goats: weights,
-        totalGoats: weights.filter((w) => w.price).length,
-        totalPrice,
+        subcounty: await AsyncStorage.getItem("selectedSubcounty"),
+        goats: validGoats,
+        totalGoats: validGoats.length,
+        totalPrice: recomputedTotal,
       };
 
       const state = await NetInfo.fetch();

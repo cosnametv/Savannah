@@ -7,6 +7,7 @@ import {
   View,
   Modal,
   Pressable,
+  TextInput,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import AppHeader from "../components/AppHeader";
@@ -20,7 +21,10 @@ export default function Settings() {
   const { theme, toggleTheme } = useAppTheme();
   const [showSheet, setShowSheet] = useState(false);
   const [showCountySheet, setShowCountySheet] = useState(false);
+  const [showSubcountySheet, setShowSubcountySheet] = useState(false);
   const [selectedCounty, setSelectedCounty] = useState(null);
+  const [selectedSubcounty, setSelectedSubcounty] = useState("");
+  const [tempSubcounty, setTempSubcounty] = useState("");
   const [farmersPending, setFarmersPending] = useState(0);
   const [offtakePending, setOfftakePending] = useState(0);
 
@@ -30,6 +34,11 @@ export default function Settings() {
       try {
         const saved = await AsyncStorage.getItem("selectedCounty");
         if (saved) setSelectedCounty(saved);
+        const savedSub = await AsyncStorage.getItem("selectedSubcounty");
+        if (savedSub) {
+          setSelectedSubcounty(savedSub);
+          setTempSubcounty(savedSub);
+        }
       } catch (e) {
         console.log("Failed to load county:", e);
       }
@@ -73,6 +82,17 @@ export default function Settings() {
       setShowCountySheet(false);
     } catch (e) {
       console.log("Failed to save county:", e);
+    }
+  };
+
+  const saveSubcounty = async () => {
+    try {
+      const clean = (tempSubcounty || "").trim();
+      await AsyncStorage.setItem("selectedSubcounty", clean);
+      setSelectedSubcounty(clean);
+      setShowSubcountySheet(false);
+    } catch (e) {
+      console.log("Failed to save subcounty:", e);
     }
   };
 
@@ -120,6 +140,36 @@ export default function Settings() {
               {selectedCounty
                 ? `Currently: ${selectedCounty}`
                 : "Choose your county"}
+            </Text>
+            <Text
+              style={[
+                styles.itemSubtitle,
+                theme === "dark" && styles.darkSubtitle,
+              ]}
+            >
+              {selectedSubcounty ? `Subcounty: ${selectedSubcounty}` : "Subcounty: Not set"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Set Subcounty Option */}
+        <TouchableOpacity
+          style={styles.item}
+          onPress={() => setShowSubcountySheet(true)}
+        >
+          <View style={styles.itemTextWrapper}>
+            <Text
+              style={[styles.itemTitle, theme === "dark" && styles.darkText]}
+            >
+              Set Subcounty
+            </Text>
+            <Text
+              style={[
+                styles.itemSubtitle,
+                theme === "dark" && styles.darkSubtitle,
+              ]}
+            >
+              {selectedSubcounty ? `Currently: ${selectedSubcounty}` : "Enter your subcounty"}
             </Text>
           </View>
         </TouchableOpacity>
@@ -224,6 +274,38 @@ export default function Settings() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Modal Bottom Sheet for Subcounty Input */}
+      <Modal
+        visible={showSubcountySheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSubcountySheet(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowSubcountySheet(false)}>
+          <Pressable style={styles.bottomSheet}>
+            <Text style={styles.sheetTitle}>Enter Subcounty</Text>
+            <View style={styles.subcountyInputWrapper}>
+              <TextInput
+                style={styles.subcountyInput}
+                placeholder="Type subcounty name"
+                placeholderTextColor="#9ca3af"
+                value={tempSubcounty}
+                onChangeText={setTempSubcounty}
+              />
+            </View>
+            <Pressable style={[styles.sheetButton, styles.saveButton]} onPress={saveSubcounty}>
+              <Text style={[styles.sheetButtonText, styles.saveButtonText]}>Save</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.sheetButton, styles.sheetCancel]}
+              onPress={() => setShowSubcountySheet(false)}
+            >
+              <Text style={styles.sheetCancelText}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -261,6 +343,14 @@ const styles = StyleSheet.create({
   sheetTitle: { fontWeight: "700", fontSize: 16, marginBottom: 8 },
   sheetButton: { paddingVertical: 12 },
   sheetButtonText: { fontSize: 16 },
+  saveButton: {
+    backgroundColor: "#16a34a",
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  saveButtonText: { color: "#fff", fontWeight: "700" },
   sheetCancel: { marginTop: 4, borderTopWidth: 1, borderTopColor: "#e5e7eb" },
   sheetCancelText: { color: "#ef4444", fontWeight: "600" },
 });

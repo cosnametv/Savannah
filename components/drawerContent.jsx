@@ -16,6 +16,7 @@ export default function CustomDrawerContent(props) {
 
   const [userEmail, setUserEmail] = useState(() => auth.currentUser?.email || '')
   const [selectedCounty, setSelectedCounty] = useState(null)
+  const [selectedSubcounty, setSelectedSubcounty] = useState(null)
 
   const drawerStatus = useDrawerStatus() 
   const [username, setUsername] = useState(null)
@@ -37,8 +38,18 @@ export default function CustomDrawerContent(props) {
       }
     }
 
+    const loadSubcounty = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('selectedSubcounty')
+        if (saved) setSelectedSubcounty(saved)
+      } catch (e) {
+        console.log('Failed to load subcounty:', e)
+      }
+    }
+
     if (drawerStatus === 'open') {
       loadCounty()
+      loadSubcounty()
     }
   }, [drawerStatus])
 
@@ -95,11 +106,10 @@ export default function CustomDrawerContent(props) {
             </Text>
 
             <Text style={[styles.sub, isDark && styles.subDark]}>
-              {userEmail || 'Not signed in'}
-            </Text>
-
-            <Text style={[styles.sub, isDark && styles.subDark]}>
               Selected County: {selectedCounty || 'Not selected'}
+            </Text>
+            <Text style={[styles.sub, isDark && styles.subDark]}>
+              Selected SubCounty: {selectedSubcounty || 'Not selected'}
             </Text>
           </View>
         </View>
@@ -125,7 +135,7 @@ export default function CustomDrawerContent(props) {
         onPress={async () => {
           try {
             await auth.signOut();
-            router.replace('/pinLock');
+            router.replace('/login');
           } catch (error) {
             console.error('Logout failed:', error);
           }

@@ -15,6 +15,7 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebas
 import { auth } from "../Config/firebaseConfig";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Login = () => {
   const router = useRouter();
@@ -26,11 +27,20 @@ const Login = () => {
 
   // Check if user is already logged in
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        router.replace("/pinSetup"); 
+        try {
+          const savedPin = await AsyncStorage.getItem('localPin');
+          if (savedPin) {
+            router.replace('/pinLock');
+          } else {
+            router.replace('/pinSetup');
+          }
+        } catch (e) {
+          router.replace('/pinSetup');
+        }
       } else {
-        setLoading(false); 
+        setLoading(false);
       }
     });
     return () => unsubscribe();
@@ -46,7 +56,16 @@ const Login = () => {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password.trim());
-      router.replace("/pinSetup"); 
+      try {
+        const savedPin = await AsyncStorage.getItem('localPin');
+        if (savedPin) {
+          router.replace('/pinLock');
+        } else {
+          router.replace('/pinSetup');
+        }
+      } catch (e) {
+        router.replace('/pinSetup');
+      }
     } catch (err) {
       setError(err.message);
       setLoading(false);

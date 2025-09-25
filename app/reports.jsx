@@ -39,6 +39,10 @@ export default function Reports() {
           const storedOfftakes = await AsyncStorage.getItem("offtakes");
           const offtakesData = storedOfftakes ? JSON.parse(storedOfftakes) : [];
           setOfftakes(offtakesData);
+
+          // Load selected subcounty (for labeling/context if needed)
+          const savedSubcounty = await AsyncStorage.getItem("selectedSubcounty");
+          // not used directly in state; reports aggregate by subcounty field on records
         } catch (e) {
           console.log("Failed to load data:", e);
         }
@@ -82,10 +86,10 @@ export default function Reports() {
   const maleCount = filteredOfftakes.filter((o) => o.gender === "male").length;
   const femaleCount = filteredOfftakes.filter((o) => o.gender === "female").length;
 
-  // Performance per Location
+  // Performance per Location (by Subcounty)
   const locationMap = {};
   filteredOfftakes.forEach((o) => {
-    const loc = o.county || "Unknown";
+    const loc = o.subcounty || o.county || "Unknown";
     if (!locationMap[loc]) locationMap[loc] = 0;
     locationMap[loc] += 1;
   });
@@ -95,11 +99,11 @@ export default function Reports() {
     percentage: ((locationMap[loc] / filteredOfftakes.length) * 100).toFixed(1),
   }));
 
-  // Offtakes Revenue per Location
+  // Offtakes Revenue per Location (by Subcounty)
   let totalRevenue = 0;
   const revenueMap = {};
   filteredOfftakes.forEach((o) => {
-    const loc = o.county || "Unknown";
+    const loc = o.subcounty || o.county || "Unknown";
     const price = o.totalPrice || 0;
     totalRevenue += price;
     if (!revenueMap[loc]) revenueMap[loc] = 0;
@@ -193,7 +197,7 @@ export default function Reports() {
               theme === "dark" && { color: "#e5e7eb" },
             ]}
           >
-            Total Offtakes: {filteredOfftakes.length}
+            Offtake Farmers Reg: {filteredOfftakes.length}
           </Text>
         </View>
         
@@ -223,9 +227,7 @@ export default function Reports() {
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
           <View style={[styles.cardAccent, { backgroundColor: "#16a34a" }]} /> 
           <Icon name="map-marker" size={28} color="#16a34a" />
-          <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
-            Performance per County
-          </Text>
+          <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>Performance per Subcounty</Text>
           {locationStats.map((loc, idx) => (
             <Text
               key={idx}
@@ -241,7 +243,7 @@ export default function Reports() {
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
           <View style={[styles.cardAccent, { backgroundColor: "#dc2626" }]} /> 
           <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
-            Gender Distribution
+            Offtake Farmers Gender Distribution
           </Text>
           <PieChart
             data={genderData}
@@ -278,9 +280,7 @@ export default function Reports() {
         <View style={[styles.card, theme === "dark" && styles.cardDark]}>
           <View style={[styles.cardAccent, { backgroundColor: "#ef4444" }]} /> 
           <Icon name="city" size={28} color="#ef4444" />
-          <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>
-            Beneficiaries per County
-          </Text>
+          <Text style={[styles.title, theme === "dark" && { color: "#e5e7eb" }]}>Beneficiaries per Subcounty</Text>
           {revenueStats.map((r, idx) => (
             <Text
               key={idx}
