@@ -175,6 +175,21 @@ const getPriceBasedOnWeight = (w) => {
         return;
       }
 
+      const subcounty = await AsyncStorage.getItem("selectedSubcounty");
+      if (!subcounty) {
+        Alert.alert("⚠️ Missing Subcounty", "Please select your subcounty in Settings.");
+        setSubmitting(false);
+        return;
+      }
+
+      // Generate unique user ID for offtake
+      const prefix = county.slice(0, 3).toUpperCase();
+      const counterKey = `offtakeCodeCounter_${prefix}`;
+      const lastCounter = await AsyncStorage.getItem(counterKey);
+      const nextCounter = lastCounter ? parseInt(lastCounter, 10) + 1 : 1;
+      await AsyncStorage.setItem(counterKey, String(nextCounter));
+      const offtakeUserId = `${prefix}${String(nextCounter).padStart(4, "0")}`;
+
       const recomputedTotal = validGoats.reduce((sum, w) => sum + (w.price ? parseFloat(w.price) : 0), 0);
 
       const offtakeData = {
@@ -185,10 +200,11 @@ const getPriceBasedOnWeight = (w) => {
         phone,
         date: formatDate(date),
         county,
-        subcounty: await AsyncStorage.getItem("selectedSubcounty"),
+        subcounty,
         goats: validGoats,
         totalGoats: validGoats.length,
         totalPrice: recomputedTotal,
+        offtakeUserId, // Add the generated user ID
       };
 
       const state = await NetInfo.fetch();
@@ -204,7 +220,7 @@ const getPriceBasedOnWeight = (w) => {
         offtakes.push(offtakeData);
         await AsyncStorage.setItem("offtakes", JSON.stringify(offtakes));
 
-        Alert.alert("✅ Success", "Offtake recorded successfully!");
+        Alert.alert("✅ Success", `Offtake recorded successfully!\nUser ID: ${offtakeUserId}`);
       } else {
         // Offline: save locally + pending
         const existing = await AsyncStorage.getItem("offtakes");
@@ -217,7 +233,7 @@ const getPriceBasedOnWeight = (w) => {
         localSync.push(offtakeData);
         await AsyncStorage.setItem("localSync", JSON.stringify(localSync));
 
-        Alert.alert("⚠️ Offline", "Saved locally. Will sync when online.");
+        Alert.alert("⚠️ Offline", `Saved locally. Will sync when online.\nUser ID: ${offtakeUserId}`);
       }
 
       // Reset

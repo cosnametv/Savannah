@@ -8,12 +8,14 @@ import {
   Modal,
   Pressable,
   TextInput,
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import AppHeader from "../components/AppHeader";
 import { useAppTheme } from "../contexts/ThemeContext";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
+import { Ionicons } from "@expo/vector-icons";
 
 const COUNTIES = ["Samburu", "Turkana", "Isiolo", "Marsabit", "Kajiado", "Narok"];
 
@@ -22,15 +24,22 @@ export default function Settings() {
   const [showSheet, setShowSheet] = useState(false);
   const [showCountySheet, setShowCountySheet] = useState(false);
   const [showSubcountySheet, setShowSubcountySheet] = useState(false);
+  const [showLocalPasswordSheet, setShowLocalPasswordSheet] = useState(false);
   const [selectedCounty, setSelectedCounty] = useState(null);
   const [selectedSubcounty, setSelectedSubcounty] = useState("");
   const [tempSubcounty, setTempSubcounty] = useState("");
   const [farmersPending, setFarmersPending] = useState(0);
   const [offtakePending, setOfftakePending] = useState(0);
+  
+  // Local PIN states
+  const [hasLocalPin, setHasLocalPin] = useState(false);
+  const [localPin, setLocalPin] = useState("");
+  const [confirmLocalPin, setConfirmLocalPin] = useState("");
+  const [showLocalPin, setShowLocalPin] = useState(false);
 
-  // Load saved county when Settings mounts
+  // Load saved settings when Settings mounts
   useEffect(() => {
-    const loadCounty = async () => {
+    const loadSettings = async () => {
       try {
         const saved = await AsyncStorage.getItem("selectedCounty");
         if (saved) setSelectedCounty(saved);
@@ -39,11 +48,15 @@ export default function Settings() {
           setSelectedSubcounty(savedSub);
           setTempSubcounty(savedSub);
         }
+        
+        // Check for existing local PIN
+        const savedLocalPin = await AsyncStorage.getItem("localPin");
+        setHasLocalPin(!!savedLocalPin);
       } catch (e) {
-        console.log("Failed to load county:", e);
+        console.log("Failed to load settings:", e);
       }
     };
-    loadCounty();
+    loadSettings();
   }, []);
 
   // Load sync status whenever the screen focuses
@@ -93,6 +106,30 @@ export default function Settings() {
       setShowSubcountySheet(false);
     } catch (e) {
       console.log("Failed to save subcounty:", e);
+    }
+  };
+
+  // Local PIN setup functions
+  const saveLocalPin = async () => {
+    if (localPin.length !== 4 || confirmLocalPin.length !== 4) {
+      Alert.alert("⚠️ PIN", "PIN must be exactly 4 digits.");
+      return;
+    }
+    if (localPin !== confirmLocalPin) {
+      Alert.alert("⚠️ PIN", "PINs do not match.");
+      return;
+    }
+    try {
+      await AsyncStorage.setItem("localPin", localPin);
+      const now = Date.now().toString();
+      await AsyncStorage.setItem("lastActiveAt", now);
+      setHasLocalPin(true);
+      setShowLocalPasswordSheet(false);
+      setLocalPin("");
+      setConfirmLocalPin("");
+      Alert.alert("✅ PIN Set", "Your 4-digit PIN has been saved.");
+    } catch (e) {
+      Alert.alert("❌ Error", "Failed to save PIN. Try again.");
     }
   };
 
@@ -170,6 +207,28 @@ export default function Settings() {
               ]}
             >
               {selectedSubcounty ? `Currently: ${selectedSubcounty}` : "Enter your subcounty"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Local PIN Setup Option */}
+        <TouchableOpacity
+          style={styles.item}
+          onPress={() => setShowLocalPasswordSheet(true)}
+        >
+          <View style={styles.itemTextWrapper}>
+            <Text
+              style={[styles.itemTitle, theme === "dark" && styles.darkText]}
+            >
+              Set 4-Digit PIN
+            </Text>
+            <Text
+              style={[
+                styles.itemSubtitle,
+                theme === "dark" && styles.darkSubtitle,
+              ]}
+            >
+              {hasLocalPin ? "PIN is set" : "Set a 4-digit PIN for quick access"}
             </Text>
           </View>
         </TouchableOpacity>
@@ -306,6 +365,60 @@ export default function Settings() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Modal Bottom Sheet for Local PIN Setup */}
+      <Modal
+        visible={showLocalPasswordSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowLocalPasswordSheet(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowLocalPasswordSheet(false)}>
+          <Pressable style={styles.bottomSheet}>
+            <Text style={styles.sheetTitle}>Set 4-Digit PIN</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter PIN"
+                placeholderTextColor="#9ca3af"
+                value={localPin}
+                onChangeText={(text) => setLocalPin(text.replace(/\D/g, "").slice(0, 4))}
+                keyboardType="number-pad"
+                secureTextEntry={!showLocalPin}
+                maxLength={4}
+              />
+              <TouchableOpacity onPress={() => setShowLocalPin(!showLocalPin)} style={styles.eyeButton}>
+                <Ionicons
+                  name={showLocalPin ? "eye-off" : "eye"}
+                  size={20}
+                  color="#6b7280"
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm PIN"
+                placeholderTextColor="#9ca3af"
+                value={confirmLocalPin}
+                onChangeText={(text) => setConfirmLocalPin(text.replace(/\D/g, "").slice(0, 4))}
+                keyboardType="number-pad"
+                secureTextEntry={!showLocalPin}
+                maxLength={4}
+              />
+            </View>
+            <Pressable style={[styles.sheetButton, styles.saveButton]} onPress={saveLocalPin}>
+              <Text style={[styles.sheetButtonText, styles.saveButtonText]}>Save PIN</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.sheetButton, styles.sheetCancel]}
+              onPress={() => setShowLocalPasswordSheet(false)}
+            >
+              <Text style={styles.sheetCancelText}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -353,4 +466,25 @@ const styles = StyleSheet.create({
   saveButtonText: { color: "#fff", fontWeight: "700" },
   sheetCancel: { marginTop: 4, borderTopWidth: 1, borderTopColor: "#e5e7eb" },
   sheetCancelText: { color: "#ef4444", fontWeight: "600" },
+  
+  // Input wrapper styles
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    backgroundColor: "#fff",
+  },
+  input: {
+    flex: 1,
+    height: 44,
+    fontSize: 16,
+    color: "#000",
+  },
+  eyeButton: {
+    padding: 8,
+  },
 });

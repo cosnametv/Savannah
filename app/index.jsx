@@ -120,6 +120,16 @@ const handleSubmit = async () => {
       return;
     }
 
+    const savedSubcounty = await AsyncStorage.getItem("selectedSubcounty");
+    if (!savedSubcounty) {
+      Alert.alert(
+        "⚠️ Missing Subcounty",
+        "Please select your subcounty in Settings before submitting."
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
     const prefix = savedCounty.slice(0, 3).toUpperCase();
     const counterKey = `codeCounter_${prefix}`;
     const lastCounter = await AsyncStorage.getItem(counterKey);
@@ -143,7 +153,7 @@ const handleSubmit = async () => {
       traceability,
       farmerId,
       county: savedCounty,
-      subcounty: await AsyncStorage.getItem("selectedSubcounty"),
+      subcounty: savedSubcounty,
     };
 
     const existing = await AsyncStorage.getItem("farmers");
@@ -412,9 +422,14 @@ return (
                   dropdownIconColor={isDark ? "#fff" : "#000"}
                 >
                   <Picker.Item label="Select Vaccine Type" value={null} enabled={false} />
-                  <Picker.Item label="1" value="1" />
-                  <Picker.Item label="2" value="2" />
-                  <Picker.Item label="3" value="3" />
+                  <Picker.Item label="PPR" value="PPR" />
+                  <Picker.Item label="CCPP" value="CCPP" />
+                  <Picker.Item label="Sheep and Goat Pox" value="Sheep and Goat Pox" />
+                  <Picker.Item label="Enterotoxemia" value="Enterotoxemia" />
+                  <Picker.Item label="Anthrax" value="Anthrax" />
+                  <Picker.Item label="Rift Valley Fever" value="Rift Valley Fever" />
+                  <Picker.Item label="Brucellosis" value="Brucellosis" />
+                  <Picker.Item label="Foot and Mouth Disease" value="Foot and Mouth Disease" />
                 </Picker>
               </View>
             ) : (
@@ -482,21 +497,21 @@ export default FarmersAsHome;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f9fafb" },
   containerDark: { backgroundColor: "#111827" },
-  form: { flex: 1, padding: 16 },
+  form: { flex: 1, padding: 10 },
 
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 16, color: "#000" },
+  title: { fontSize: 20, fontWeight: "bold", marginBottom: 12, color: "#000" },
   titleDark: { color: "#fff" },
 
-  sectionTitle: { fontSize: 18, fontWeight: "600", marginBottom: 12, color: "#111" },
-  label: { fontSize: 14, fontWeight: "500", marginBottom: 4, color: "#374151" },
+  sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 8, color: "#111" },
+  label: { fontSize: 14, fontWeight: "500", marginBottom: 2, color: "#374151" },
   labelDark: { color: "#e5e7eb" },
 
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    padding: 10,
+    marginBottom: 10,
     backgroundColor: "#fff",
     color: "#000",
   },
@@ -510,7 +525,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 10,
     backgroundColor: "#fff",
   },
 
@@ -523,10 +538,10 @@ const styles = StyleSheet.create({
 
   bigButton: {
     backgroundColor: "#1f8b2c",
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",
-    marginTop: 12,
+    marginTop: 10,
   },
   bigButtonText: { color: "#fff", fontWeight: "700", fontSize: 18 },
 
@@ -534,7 +549,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 20,
+    marginTop: 14,
   },
   smallButton: {
     backgroundColor: "#6b7280",
@@ -546,8 +561,8 @@ const styles = StyleSheet.create({
 
   bigSubmitButton: {
     backgroundColor: "#16a34a",
-    paddingVertical: 13,
-    paddingHorizontal: 50,
+    paddingVertical: 12,
+    paddingHorizontal: 36,
     borderRadius: 10,
   },
   bigSubmitText: { color: "#fff", fontWeight: "700", fontSize: 20 },
@@ -556,7 +571,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 12,
   },
   stepItem: { alignItems: "center", flex: 1 },
   stepCircle: {

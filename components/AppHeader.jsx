@@ -1,17 +1,32 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, Text, Image, StyleSheet, Platform, Dimensions } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
 
 const { width } = Dimensions.get('window');
 
-export default function AppHeader() {
+export default function AppHeader({ showMenu = true }) {
   const navigation = useNavigation();
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const isDark = theme === 'dark';
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    let unsubscribe = NetInfo.addEventListener(state => {
+      setIsOnline(!!state.isConnected && !!state.isInternetReachable);
+    });
+    // Fetch initial state in case listener fires late
+    NetInfo.fetch().then(state => {
+      setIsOnline(!!state.isConnected && !!state.isInternetReachable);
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   return (
     <View style={[
@@ -25,29 +40,36 @@ export default function AppHeader() {
         isDark ? styles.gradientOverlayDark : styles.gradientOverlayLight
       ]} />
       
-      {/* Left: Menu Button */}
-      <TouchableOpacity
-        style={[
-          styles.menuButton,
-          isDark ? styles.menuButtonDark : styles.menuButtonLight
-        ]}
-        activeOpacity={0.7}
-        onPress={() => {
-          // @ts-ignore - expo-router exposes openDrawer when inside a Drawer
-          if (typeof navigation?.openDrawer === 'function') {
-            navigation.openDrawer();
-          }
-        }}
-        accessibilityLabel="Open navigation menu"
-        accessibilityRole="button"
-        accessibilityHint="Opens the main navigation drawer"
-      >
-        <Ionicons 
-          name="menu" 
-          size={24} 
-          color={isDark ? '#e5e7eb' : '#ffffff'} 
-        />
-      </TouchableOpacity>
+      {/* Left: Menu Button or Placeholder */}
+      {showMenu ? (
+        <TouchableOpacity
+          style={[
+            styles.menuButton,
+            isDark ? styles.menuButtonDark : styles.menuButtonLight
+          ]}
+          activeOpacity={0.7}
+          onPress={() => {
+            // @ts-ignore - expo-router exposes openDrawer when inside a Drawer
+            if (typeof navigation?.openDrawer === 'function') {
+              navigation.openDrawer();
+            }
+          }}
+          accessibilityLabel="Open navigation menu"
+          accessibilityRole="button"
+          accessibilityHint="Opens the main navigation drawer"
+        >
+          <Ionicons 
+            name="menu" 
+            size={24} 
+            color={isDark ? '#e5e7eb' : '#ffffff'} 
+          />
+        </TouchableOpacity>
+      ) : (
+        <View style={[
+          styles.rightPlaceholder,
+          isDark ? styles.rightPlaceholderDark : styles.rightPlaceholderLight
+        ]} />
+      )}
 
       {/* Center: Logo and Title */}
       <View style={styles.centerContent}>
@@ -82,16 +104,13 @@ export default function AppHeader() {
         </View>
       </View>
 
-      {/* Right: Placeholder for future actions */}
+      {/* Right: Online/Offline status */}
       <View style={[
-        styles.rightPlaceholder,
-        isDark ? styles.rightPlaceholderDark : styles.rightPlaceholderLight
+        styles.statusPill,
+        isOnline ? styles.statusOnlineBg : styles.statusOfflineBg
       ]}>
-        <Ionicons 
-          name="notifications-outline" 
-          size={22} 
-          color={isDark ? '#e5e7eb' : '#ffffff'} 
-        />
+        <View style={[styles.statusDot, isOnline ? styles.dotOnline : styles.dotOffline]} />
+        <Text style={[styles.statusText]}>{isOnline ? 'Online' : 'Offline'}</Text>
       </View>
     </View>
   );
@@ -266,5 +285,32 @@ const styles = StyleSheet.create({
   },
   rightPlaceholderDark: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    height: 28,
+    borderRadius: 16,
+  },
+  statusOnlineBg: {
+    backgroundColor: 'rgba(34,197,94,0.25)',
+  },
+  statusOfflineBg: {
+    backgroundColor: 'rgba(239,68,68,0.25)',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  dotOnline: { backgroundColor: '#22c55e' },
+  dotOffline: { backgroundColor: '#ef4444' },
+  statusText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

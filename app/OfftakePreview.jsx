@@ -5,6 +5,8 @@ import {
   Text,
   ScrollView,
   SafeAreaView,
+  TouchableOpacity,
+  Alert,
 } from "react-native";
 import AppHeader from "../components/AppHeader";
 import { useAppTheme } from "../contexts/ThemeContext";
@@ -34,6 +36,31 @@ const OfftakePreview = () => {
       loadData();
     }, [])
   );
+
+  const clearAllOfftakes = async () => {
+    Alert.alert(
+      "Confirm",
+      "Clear all saved offtakes on this device? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "OK",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem("offtakes");
+              await AsyncStorage.removeItem("localSync");
+              setOfftakes([]);
+              Alert.alert("Done", "All local offtake data cleared.");
+            } catch (e) {
+              console.error("Failed to clear offtakes:", e);
+              Alert.alert("Error", "Could not clear data. Try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (offtakes.length === 0) {
     return (
@@ -86,6 +113,11 @@ return (
     style={[styles.container, theme === "dark" && styles.containerDark]}
   >
     <AppHeader />
+      <View style={styles.actionsRow}>
+        <TouchableOpacity style={styles.clearBtn} onPress={clearAllOfftakes}>
+          <Text style={styles.clearBtnText}>Clear Offtakes</Text>
+        </TouchableOpacity>
+      </View>
     <ScrollView style={styles.scene}>
       {/* Summary */}
       <View
@@ -218,6 +250,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   reportCardDark: { backgroundColor: "#1f2937" },
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  clearBtn: {
+    backgroundColor: "#ef4444",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  clearBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",

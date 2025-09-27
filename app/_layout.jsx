@@ -20,20 +20,36 @@ function ThemedDrawer() {
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      if (!user) {
+    const checkAuth = async () => {
+      try {
+        // Check Firebase auth first
+        const unsubscribe = auth.onAuthStateChanged(async (user) => {
+          console.log("Auth state changed - Firebase user:", user?.email || "No user");
+          if (user) {
+            // Firebase user is logged in - allow access
+            console.log("Firebase user authenticated, allowing access");
+            return;
+          }
+          
+          // If no Firebase user, check for local authentication
+          const localAuth = await AsyncStorage.getItem('localAuth');
+          console.log("Local auth flag:", localAuth);
+          if (!localAuth) {
+            console.log("No auth found, redirecting to login");
+            router.replace('/login');
+            return;
+          }
+          console.log("Local auth found, allowing access");
+        });
+        
+        return unsubscribe;
+      } catch (error) {
+        console.log('Auth check error:', error);
         router.replace('/login');
-        return;
       }
-      // If logged in, enforce PIN setup
-      (async () => {
-        const pin = await AsyncStorage.getItem('localPin');
-        if (!pin) {
-          router.replace('/pinSetup');
-        }
-      })();
-    });
-    return unsubscribe;
+    };
+    
+    checkAuth();
   }, [pathname, router]);
 
 

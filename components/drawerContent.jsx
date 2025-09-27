@@ -134,7 +134,12 @@ export default function CustomDrawerContent(props) {
         )}
         onPress={async () => {
           try {
+            // Clear local auth flag
+            await AsyncStorage.removeItem('localAuth');
+            
+            // Sign out from Firebase (if logged in)
             await auth.signOut();
+            
             router.replace('/login');
           } catch (error) {
             console.error('Logout failed:', error);
