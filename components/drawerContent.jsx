@@ -4,10 +4,9 @@ import { DrawerContentScrollView, DrawerItemList, DrawerItem, useDrawerStatus } 
 import { useRouter } from 'expo-router'
 import { useAppTheme } from '../contexts/ThemeContext'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import { auth, db } from '../Config/firebaseConfig'
+import { auth } from '../Config/firebaseConfig'
 import { onAuthStateChanged } from 'firebase/auth'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { collection, query, where, getDocs } from 'firebase/firestore'
 
 export default function CustomDrawerContent(props) {
   const router = useRouter()
@@ -21,9 +20,37 @@ export default function CustomDrawerContent(props) {
   const drawerStatus = useDrawerStatus() 
   const [username, setUsername] = useState(null)
 
+  // Load stored username on component mount
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const loadInitialUsername = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('storedUsername')
+        if (stored) {
+          setUsername(stored)
+        } else {
+          // Check if user is using local auth
+          const localAuth = await AsyncStorage.getItem('localAuth')
+          if (localAuth && !auth.currentUser) {
+            setUsername('Local User')
+          }
+        }
+      } catch (e) {
+        console.log('Failed to load initial username:', e)
+      }
+    }
+    
+    loadInitialUsername()
+  }, [])
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       setUserEmail(user?.email || '')
+      
+      // If Firebase user exists, store their email as username
+      if (user?.email) {
+        await AsyncStorage.setItem('storedUsername', user.email)
+        setUsername(user.email)
+      }
     })
     return () => unsub()
   }, [])
@@ -47,35 +74,30 @@ export default function CustomDrawerContent(props) {
       }
     }
 
-    if (drawerStatus === 'open') {
-      loadCounty()
-      loadSubcounty()
-    }
-  }, [drawerStatus])
-
-    useEffect(() => {
-    const fetchUsername = async () => {
-      if (!userEmail) return
-
+    const loadStoredUsername = async () => {
       try {
-        const usersRef = collection(db, 'users')
-        const q = query(usersRef, where('email', '==', userEmail))
-        const querySnapshot = await getDocs(q)
-
-        if (!querySnapshot.empty) {
-          const userDoc = querySnapshot.docs[0].data()
-          setUsername(userDoc.name || 'Unknown User')
-        } else {
-          setUsername('Unknown User')
+        const stored = await AsyncStorage.getItem('storedUsername')
+        if (stored) {
+          setUsername(stored)
+        } else if (!auth.currentUser) {
+          // If no stored username and no Firebase user, check for local auth
+          const localAuth = await AsyncStorage.getItem('localAuth')
+          if (localAuth) {
+            setUsername('Local User')
+          }
         }
-      } catch (error) {
-        console.log('Error fetching username:', error)
-        setUsername('Error')
+      } catch (e) {
+        console.log('Failed to load stored username:', e)
       }
     }
 
-    fetchUsername()
-  }, [userEmail])
+    if (drawerStatus === 'open') {
+      loadCounty()
+      loadSubcounty()
+      loadStoredUsername()
+    }
+  }, [drawerStatus])
+
 
 
   return (
@@ -134,8 +156,9 @@ export default function CustomDrawerContent(props) {
         )}
         onPress={async () => {
           try {
-            // Clear local auth flag
+            // Clear local auth flag and stored username
             await AsyncStorage.removeItem('localAuth');
+            await AsyncStorage.removeItem('storedUsername');
             
             // Sign out from Firebase (if logged in)
             await auth.signOut();

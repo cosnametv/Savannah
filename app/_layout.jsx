@@ -1,10 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Drawer } from 'expo-router/drawer';
 import CustomDrawerContent from '../components/drawerContent';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppThemeProvider, useAppTheme } from '../contexts/ThemeContext';
 import { useRouter, usePathname } from 'expo-router';
-import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../Config/firebaseConfig';
 
@@ -17,7 +16,6 @@ function ThemedDrawer() {
   const inactiveTint = isDark ? '#cbd5e1' : '#374151';
   const router = useRouter();
   const pathname = usePathname();
-  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -53,28 +51,6 @@ function ThemedDrawer() {
   }, [pathname, router]);
 
 
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', async (nextState) => {
-      const now = Date.now();
-      if (nextState === 'background' || nextState === 'inactive') {
-        await AsyncStorage.setItem('lastActiveAt', String(now));
-        return;
-      }
-      if (nextState === 'active') {
-        try {
-          const saved = await AsyncStorage.getItem('localPin');
-          if (!saved) return;
-          const lastStr = await AsyncStorage.getItem('lastActiveAt');
-          const last = lastStr ? parseInt(lastStr, 10) : 0;
-          const THIRTY_MIN = 30 * 60 * 1000;
-          if (last && now - last > THIRTY_MIN) {
-            router.replace('/pinLock');
-          }
-        } catch {}
-      }
-    });
-    return () => sub.remove();
-  }, [router]);
 
   return (
     <Drawer
@@ -97,26 +73,6 @@ function ThemedDrawer() {
           drawerItemStyle: { display: 'none' },
           drawerIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="login" size={size} color={color} />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="pinSetup"
-        options={{
-          drawerLabel: 'Set PIN',
-          drawerItemStyle: { display: 'none' },
-          drawerIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="lock-plus" size={size} color={color} />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="pinLock"
-        options={{
-          drawerLabel: 'PIN Lock',
-          drawerItemStyle: { display: 'none' },
-          drawerIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="lock" size={size} color={color} />
           ),
         }}
       />

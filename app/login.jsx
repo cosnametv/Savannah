@@ -81,6 +81,10 @@ const Login = () => {
       console.log("Attempting Firebase login...");
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password.trim());
       console.log("Firebase login successful:", userCredential.user?.email);
+      
+      // Store the username (email) in AsyncStorage for drawer display
+      await AsyncStorage.setItem('storedUsername', userCredential.user?.email || '');
+      
       setEmail("");
       setPassword("");
       // The redirect will be handled by the auth state change listener
@@ -158,11 +162,6 @@ const Login = () => {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.center}>
-            <View style={styles.titleContainer}>
-              <Text style={[styles.welcomeText, isDark && styles.welcomeTextDark]}>Welcome to</Text>
-              <Text style={[styles.companyName, isDark && styles.companyNameDark]}>Savanna Herds Lmtd</Text>
-            </View>
-
             {/* Tab Navigation */}
             <View style={[styles.tabContainer, isDark && styles.tabContainerDark]}>
               <TouchableOpacity
